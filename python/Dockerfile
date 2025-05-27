@@ -21,10 +21,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get update && apt-get install -y google-chrome-stable \
     && rm -rf /var/lib/apt/lists/*
 
-# Python libs from first stage
+# Pull python libs built in stage-1
 COPY --from=python-deps /usr/local /usr/local
-# Your FastAPI code
-COPY . /app                 
+
+# Copy just your FastAPI code
+COPY python/app /app
 WORKDIR /app
 
 CMD ["uvicorn", "sorting:app", "--host", "0.0.0.0", "--port", "8080"]
