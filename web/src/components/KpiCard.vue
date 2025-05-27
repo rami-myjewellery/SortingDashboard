@@ -4,7 +4,8 @@ defineProps({ label: String, value: Number, unit: String })
 
 <template>
   <div class="kpi-card">
-    <div class="kpi-value">{{ value }}{{ unit }}</div>
+    <div class="kpi-value">{{ value }}</div>
+    <div class="kpi-value">{{ unit }}</div>
     <div class="kpi-label">{{ label }}</div>
   </div>
 </template>
@@ -12,14 +13,14 @@ defineProps({ label: String, value: Number, unit: String })
 <style scoped>
 .kpi-card {
   background: rgba(255, 255, 255, 0.18);
-  padding: 2vh 3vw;
+  padding: 2vh;
   border-radius: 12px;
   text-align: center;
   min-width: 26vw;
   z-index: 2;
 }
 .kpi-value {
-  font-size: 7vw;
+  font-size: 5vw;
   font-weight: 700;
   line-height: 1;
 }

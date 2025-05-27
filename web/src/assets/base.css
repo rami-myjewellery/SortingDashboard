@@ -21,9 +21,7 @@ body{
   font-family:"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Open Sans","Helvetica Neue",sans-serif;
   color:var(--clr-text-light);background:var(--clr-bg-good);transition:background .3s
 }
-body.status-good{background:var(--clr-bg-good)}
-body.status-risk{background:var(--clr-bg-risk)}
-body.status-bad {background:var(--clr-bg-bad)}
+
 
 body::before{
   content:"";position:absolute;inset:0;
@@ -40,12 +38,13 @@ header{
 }
 
 /* ---------- MAIN & KPI ---------- */
-main{flex:1 1 0;display:flex;flex-direction:column;padding:2vh 2vw 3vh 0}
+main{flex:1 1 0;display:flex;flex-direction:column;padding:2vh 2vw 3vh 2vw}
 .kpi-area{flex:1 1 0;display:flex;justify-content:center;align-items:flex-start}
 .kpis{display:flex;gap:4vw;margin:0;justify-content:center}
 .kpi-card{
   background:rgba(255,255,255,.25);backdrop-filter:blur(4px);
-  padding:2vh 3vw;border-radius:.75rem;text-align:center;
+  padding:2vh ;border-radius:.75rem;text-align:center;
+  
   min-width:24vw;flex:0 1 28vw
 }
 .kpi-value{font-size:clamp(2rem,7vw,6rem);font-weight:700;line-height:1}
