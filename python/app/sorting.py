@@ -12,7 +12,7 @@ app = FastAPI(
 # Allow your Vite dev-server + production host
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5180", "https://your-vue-host.com"],
+    allow_origins=["http://localhost:5180", "https://sorting-dashboard-web-208732756826.europe-west4.run.app"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
