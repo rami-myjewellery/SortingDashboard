@@ -16,4 +16,4 @@ COPY --from=deps /usr/local /usr/local
 COPY app /app
 
 # start the server  (sorting.py contains `app = FastAPI()`)
-CMD ["uvicorn", "sorting:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
