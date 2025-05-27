@@ -18,7 +18,7 @@ app.add_middleware(
 )
 
 # ----- In-memory store (replace later with DB/Redis) -----------------
-_db: Dict[str, Dashboard] = {x
+_db: Dict[str, Dashboard] = {
     "default": Dashboard(
         title="Sorting",
         status="risk",

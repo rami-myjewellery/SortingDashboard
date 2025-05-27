@@ -1,8 +1,8 @@
 # cloudbuild.yaml  ── single-trigger, two-service deploy
 substitutions:
   _REGION: europe-west4
-  _API_SERVICE: pick-binding-dashboard-api
-  _WEB_SERVICE: pick-binding-dashboard-web
+  _API_SERVICE: sorting-dashboard-api
+  _WEB_SERVICE: sorting-dashboard-web
   _VPC_CONNECTOR: projects/mj-shared/locations/europe-west4/connectors/poc-ingestor
   _MIN_INST: '1'
   _MAX_INST: '2'
