@@ -1,0 +1,102 @@
+# cloudbuild.yaml  ── single-trigger, two-service deploy
+substitutions:
+  _REGION: europe-west4
+  _API_SERVICE: pick-binding-dashboard-api
+  _WEB_SERVICE: pick-binding-dashboard-web
+  _VPC_CONNECTOR: projects/mj-shared/locations/europe-west4/connectors/poc-ingestor
+  _MIN_INST: '1'
+  _MAX_INST: '2'
+
+steps:
+  # ───────────────────────── Build & push API image ─────────────────────────
+  - id: build-api
+    name: gcr.io/cloud-builders/docker
+    args: [
+      'build', '-f', 'python/Dockerfile',
+      '-t', 'gcr.io/$PROJECT_ID/${_API_SERVICE}:${SHORT_SHA}',
+      'python'
+    ]
+
+  - id: push-api
+    name: gcr.io/cloud-builders/docker
+    args: ['push', 'gcr.io/$PROJECT_ID/${_API_SERVICE}:${SHORT_SHA}']
+  
+  # ───────────────────────── Deploy API to Cloud Run ─────────────────────────
+  - id: deploy-api
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        gcloud run deploy ${_API_SERVICE} \
+          --image gcr.io/$PROJECT_ID/${_API_SERVICE}:${SHORT_SHA} \
+          --region ${_REGION} --platform managed \
+          --allow-unauthenticated \
+          --service-account pick-binding-dashboard@$PROJECT_ID.iam.gserviceaccount.com \
+          --vpc-connector ${_VPC_CONNECTOR} \
+          --vpc-egress all-traffic \
+          --min-instances ${_MIN_INST} \
+          --max-instances ${_MAX_INST} \
+          --port 8080
+        
+        # Capture the fresh URL for the next step
+        API_URL=$(gcloud run services describe ${_API_SERVICE} \
+                   --region ${_REGION} --platform managed \
+                   --format='value(status.url)')
+        echo "API_URL=$${API_URL}" > /workspace/.api_url
+  
+  # ───────────────────────── Build & push WEB image ─────────────────────────
+  - id: build-web
+    name: gcr.io/cloud-builders/docker
+    args: [
+      'build', '-f', 'web/Dockerfile',
+      '-t', 'gcr.io/$PROJECT_ID/${_WEB_SERVICE}:${SHORT_SHA}',
+      'web'
+    ]
+
+  - id: push-web
+    name: gcr.io/cloud-builders/docker
+    args: ['push', 'gcr.io/$PROJECT_ID/${_WEB_SERVICE}:${SHORT_SHA}']
+  
+  # ───────────────────────── Deploy WEB to Cloud Run ─────────────────────────
+  - id: deploy-web
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        # read API_URL captured earlier
+        source /workspace/.api_url
+        echo "Deploying web with BACKEND_URL=$${API_URL}"
+        
+        gcloud run deploy ${_WEB_SERVICE} \
+          --image gcr.io/$PROJECT_ID/${_WEB_SERVICE}:${SHORT_SHA} \
+          --region ${_REGION} --platform managed \
+          --service-account pick-binding-dashboard@$PROJECT_ID.iam.gserviceaccount.com \
+          --allow-unauthenticated \
+          --set-env-vars BACKEND_URL=$${API_URL} \
+          --min-instances ${_MIN_INST} \
+          --max-instances ${_MAX_INST} \
+          --port 8080
+
+# ───────────────────────── (optional) shift traffic ───────────────────────
+# Not strictly required—`deploy` already sends 100 % to latest.
+# Uncomment if you want it explicit.
+# - id: migrate-traffic-api
+#   name: gcr.io/google.com/cloudsdktool/cloud-sdk
+#   entrypoint: gcloud
+#   args: ['run','services','update-traffic','${_API_SERVICE}',
+#          '--region','${_REGION}','--platform','managed','--to-latest']
+# - id: migrate-traffic-web
+#   name: gcr.io/google.com/cloudsdktool/cloud-sdk
+#   entrypoint: gcloud
+#   args: ['run','services','update-traffic','${_WEB_SERVICE}',
+#          '--region','${_REGION}','--platform','managed','--to-latest']
+
+images:
+  - 'gcr.io/$PROJECT_ID/${_API_SERVICE}:${SHORT_SHA}'
+  - 'gcr.io/$PROJECT_ID/${_WEB_SERVICE}:${SHORT_SHA}'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+timeout: 1200s

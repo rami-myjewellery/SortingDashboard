@@ -1,0 +1,105 @@
+/* ---------- HUISSTIJL ---------- */
+:root{
+  --clr-header:#004580;
+  --clr-bg-good:#0b7c4b;
+  --clr-bg-risk:#ff9c2a;
+  --clr-bg-bad:#d6252c;
+  --clr-person:#e8f0fa;
+  --clr-person-idle-light: #d7dee8;  /* begin van gradient */
+  --clr-person-idle-dark:  #b4c3d4;  /* eind van gradient  */
+  --clr-accent:#13c38b;
+  --clr-text-light:#fff;
+  --clr-text-dark:#1a1a1a;
+  
+  --bg-url:url('https://www.my-jewellery.com/media/catalog/product/b/e/beige-dress-in-satin-look-with-puff-sleeves-_-bows-front.jpg')
+}
+
+/* ---------- BASISLAY-OUT ---------- */
+html,body{height:100%;margin:0;overflow:hidden}
+body{
+  display:flex;flex-direction:column;
+  font-family:"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Open Sans","Helvetica Neue",sans-serif;
+  color:var(--clr-text-light);background:var(--clr-bg-good);transition:background .3s
+}
+body.status-good{background:var(--clr-bg-good)}
+body.status-risk{background:var(--clr-bg-risk)}
+body.status-bad {background:var(--clr-bg-bad)}
+
+body::before{
+  content:"";position:absolute;inset:0;
+  background:var(--bg-url) center bottom/auto 80% no-repeat;
+  filter:grayscale(100%) brightness(1.35) contrast(1);
+  mix-blend-mode:multiply;pointer-events:none;z-index:-1;
+}
+
+/* ---------- HEADER ---------- */
+header{
+  flex:0 0 14vh;background:var(--clr-header);
+  display:flex;align-items:center;justify-content:center;
+  font-size:clamp(3rem,7vw,8rem);font-weight:600;letter-spacing:.05em;text-transform:uppercase;z-index:2
+}
+
+/* ---------- MAIN & KPI ---------- */
+main{flex:1 1 0;display:flex;flex-direction:column;padding:2vh 2vw 3vh 0}
+.kpi-area{flex:1 1 0;display:flex;justify-content:center;align-items:flex-start}
+.kpis{display:flex;gap:4vw;margin:0;justify-content:center}
+.kpi-card{
+  background:rgba(255,255,255,.25);backdrop-filter:blur(4px);
+  padding:2vh 3vw;border-radius:.75rem;text-align:center;
+  min-width:24vw;flex:0 1 28vw
+}
+.kpi-value{font-size:clamp(2rem,7vw,6rem);font-weight:700;line-height:1}
+.kpi-label{font-size:clamp(1rem,2.5vw,2rem);text-transform:uppercase;letter-spacing:.04em;margin-top:.6vh}
+
+/* ---------- GESCHIEDENIS ---------- */
+.history{margin-top:1.6vh;font-size:clamp(.9rem,2.3vw,1.8rem);text-align:center;opacity:.85}
+
+/* ---------- PEOPLE ---------- */
+.people-list{display:flex;flex-direction:column;gap:1.2vh;margin-top:1.2vh}
+.person-bar{
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--clr-person);border-radius:0 .75rem 0 0;
+  padding:0 2vw;height:8vh;font-size:clamp(1.2rem,5vw,3rem);font-weight:500;transition:background .3s
+}
+.person-bar.good{background:#13c38b20}
+.person-bar.warn{background:#ff9c2a25}
+.person-bar.idle {
+  /* diagonaal verloop van licht- naar donkergrijs */
+  background: linear-gradient(135deg,
+  var(--clr-person-idle-light) 0%,
+  var(--clr-person-idle-dark) 100%);
+  font-style: italic;
+  color: var(--clr-text-dark);          /* blijft goed leesbaar */
+}
+
+
+/* ---------- DETAILS ---------- */
+.details{display:flex;align-items:center;gap:2vw}
+html:not(.show-details) .details{display:none!important}
+
+/* klokje */
+.clock{
+  width:4vh;height:4vh;opacity:.85;
+  background:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="%23000" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="%23000" stroke-width="2"/><polyline points="12,6 12,12 15,14" fill="none" stroke="%23000" stroke-width="2" stroke-linecap="round"/></svg>') center/contain no-repeat
+}
+html.show-details .idle .clock{opacity:.55}
+
+/* dial gauge */
+.dial{
+  --size:4vh;--value:70;--fill:var(--clr-accent);
+  width:var(--size);height:var(--size);border-radius:50%;
+  background:conic-gradient(var(--fill) calc(var(--value)*1%),#d3dce6 0deg);
+  display:flex;align-items:center;justify-content:center;
+  font-size:clamp(.8rem,2vw,1.4rem);font-weight:600;color:var(--clr-text-dark);position:relative
+}
+.dial>span{position:absolute}
+.dial.good{--fill:#13c38b}
+.dial.warn{--fill:#ff9c2a}
+.dial.bad {--fill:#d6252c}
+
+/* ---------- EXTRA (portrait) ---------- */
+@media(max-aspect-ratio:9/16){
+  header{font-size:clamp(2.5rem,5vw,6rem)}
+  .person-bar{font-size:clamp(1rem,3.4vw,2.2rem);height:9vh}
+  .kpi-value{font-size:clamp(2rem,8vw,6.5rem)}
+}
