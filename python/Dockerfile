@@ -13,7 +13,7 @@ WORKDIR /app
 COPY --from=deps /usr/local /usr/local
 
 # copy ONLY your FastAPI package
-COPY app /app
+COPY . /app 
 
 # start the server  (sorting.py contains `app = FastAPI()`)
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
