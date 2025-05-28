@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers import dashboard, sortingBeltAnalyser  # import other routers as you add them
 
 ALLOWED_ORIGINS = [
-    "http://localhost:5180",
+    "http://localhost:5181/",
     "https://sorting-dashboard-web-208732756826.europe-west4.run.app",
 ]
 
