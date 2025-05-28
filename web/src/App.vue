@@ -4,7 +4,7 @@ import axios from 'axios'
 import Dashboard from './components/Dashboard.vue'
 
 const data = ref(null)
-const API = 'https://sorting-dashboard-api-208732756826.europe-west4.run.app/dashboard'
+const API = 'http://0.0.0.0:5001/dashboard/'
 
 /* 1) pull once on mount — or open a websocket for realtime */
 onMounted(async () => {
