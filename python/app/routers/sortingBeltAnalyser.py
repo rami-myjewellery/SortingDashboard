@@ -45,7 +45,7 @@ def mark_candidate_labels(rgb: np.ndarray) -> np.ndarray:
 
 @router.post("/analyze-image", response_model=GPTAnswer)
 async def analyze_image(
-    file: UploadFile = File(...),
+    file: UploadFile =  (...),
 ):
     # 1️⃣ crop the 4 belts
     try:
@@ -53,23 +53,28 @@ async def analyze_image(
         crops_bin = crop_belts(full_frame)              # {'red': b'...', ...}
     except Exception as e:
         raise HTTPException(400, str(e))
-
+    ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    for segment_id, img_bytes in crops_bin.items():
+        img_path = CROP_DIR / f"{ts}_{segment_id}.png"
+        "img_path.write_bytes(img_bytes)"
+        print(f"Saved segment '{segment_id}' to {img_path}")
     # 2️⃣ save crops & prepare vision inputs (detail:high) one-by-one
     belt_counts: dict[str, int] = {}
-    ordered = ["red", "green", "yellow", "magenta"]
 
     prompt_single = (
         "This image shows ONE conveyor-belt segment with parcels.\n"
-        "Count **every individual label sticker** you can see on the parcels. "
-        "Return a single integer only (≥1, no words)."
+        "Count **every individual label sticker** you can see on the parcels. the camera quality is not too good so check for white squares"
+        "only respond in the integer of the amount of labels you see"
     )
 
-    for colour in ordered:
-        png_bytes = crops_bin[colour]
+    for bin in crops_bin:
+        png_bytes = crops_bin.get(bin)
 
         # -- optional upscale for more pixels (2×) --------------------------
         rgb = cv2.imdecode(np.frombuffer(png_bytes, np.uint8), cv2.IMREAD_COLOR)
         rgb = cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB)
+        rgb = cv2.resize(rgb, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
+        rgb = cv2.resize(rgb, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
         rgb = cv2.resize(rgb, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
 
         # -- optional marker dots ------------------------------------------
@@ -82,7 +87,7 @@ async def analyze_image(
         # -- debug-save to scratch -----------------------------------------
         ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         uid = uuid.uuid4().hex[:6]
-        Path(CROP_DIR, f"{ts}_{uid}_{colour}.png").write_bytes(png_bytes)
+        Path(CROP_DIR, f"{ts}_{uid}_{bin}.png").write_bytes(png_bytes)
 
         # -- build vision message ------------------------------------------
         data_url = "data:image/png;base64," + base64.b64encode(png_bytes).decode()
@@ -105,18 +110,17 @@ async def analyze_image(
 
         # 4️⃣ extract the integer (allow plain number or JSON literal)
         try:
-            belt_counts[colour] = int(json.loads(reply_text))
+            belt_counts[bin] = int(json.loads(reply_text)) or 0
         except Exception:
             # fallback: digits in the string
             digits = "".join(ch for ch in reply_text if ch.isdigit())
-            belt_counts[colour] = int(digits) if digits else 1
+            belt_counts[bin] = int(digits) if digits else 1
         # ----------- 3️⃣  UPDATE DASHBOARD KPI VALUES -------------------------
     db = get_db()["default"]  # single profile for now
 
     total_labels = sum(belt_counts.values())  # multi-belt = accumulated
-    highest_belt = max(v for k, v in belt_counts.items()
-                       if k in ("green", "yellow", "magenta"))  # ignore red
-    error_labels = belt_counts["red"]  # red belt = error
+    highest_belt = max(v for k, v in belt_counts.items())  # ignore red
+    error_labels = belt_counts.get("segment_6")
 
     for kpi in db.kpis:
         if kpi.label.startswith("Multi"):

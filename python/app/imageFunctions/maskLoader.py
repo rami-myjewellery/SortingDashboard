@@ -1,40 +1,45 @@
-# app/core/mask_loader.py
-import cv2, numpy as np
+import cv2
+import numpy as np
 from pathlib import Path
+from skimage.measure import label
 
-APP_DIR   = Path(__file__).resolve().parent.parent   # …/app/
+APP_DIR = Path(__file__).resolve().parent.parent
 MASK_FILE = APP_DIR / "assets" / "belt_mask.png"
 
-mask_img = cv2.imread(str(MASK_FILE))
-if mask_img is None:
-    raise FileNotFoundError(
-        f"Mask not found or unreadable: {MASK_FILE}. "
-        "Check the assets folder is present in the image / container."
-    )
-# HSV ranges that match your solid paint colours
-HSV_RANGES = {
-    "red":     [(0,100,100), (10,255,255), (160,100,100), (180,255,255)],
-    "green":   [(40,100,100), (80,255,255)],
-    "yellow":  [(20,100,100), (35,255,255)],
-    "magenta": [(140,100,100), (170,255,255)],
-}
+EXPECTED_SEGMENTS = 6
 
 def load_region_masks():
     mask_img = cv2.imread(str(MASK_FILE))
-    hsv      = cv2.cvtColor(mask_img, cv2.COLOR_BGR2HSV)
+    if mask_img is None:
+        raise FileNotFoundError(
+            f"Mask not found or unreadable: {MASK_FILE}. "
+            "Check the assets folder is present in the image/container."
+        )
 
+    hsv = cv2.cvtColor(mask_img, cv2.COLOR_BGR2HSV)
     full_h, full_w = mask_img.shape[:2]
-    region_masks: dict[str, np.ndarray] = {}
 
-    for colour, rngs in HSV_RANGES.items():
-        m = None
-        for i in range(0, len(rngs), 2):
-            lower, upper = np.array(rngs[i]), np.array(rngs[i+1])
-            part = cv2.inRange(hsv, lower, upper)
-            m = part if m is None else cv2.bitwise_or(m, part)
-        # store as boolean mask for fast use later
-        region_masks[colour] = m.astype(bool)
+    # Initial HSV range parameters for green
+    base_lower = np.array([40, 50, 50])
+    base_upper = np.array([80, 255, 255])
 
-    return region_masks, (full_w, full_h)
+    # Iteratively adjust saturation/value lower bound
+    for threshold in range(50, 200, 10):
+        adjusted_lower = np.array([40, threshold, threshold])
+        green_mask = cv2.inRange(hsv, adjusted_lower, base_upper)
+
+        labeled_segments, num_segments = label(green_mask, return_num=True, connectivity=2)
+
+        if num_segments == EXPECTED_SEGMENTS:
+            region_masks = {
+                f"segment_{label_id}": (labeled_segments == label_id)
+                for label_id in range(1, num_segments + 1)
+            }
+            return region_masks, (full_w, full_h)
+
+    raise ValueError(
+        f"Could not find exactly {EXPECTED_SEGMENTS} segments after iterative adjustments. "
+        "Please verify the mask image manually."
+    )
 
 REGION_MASKS, FRAME_SIZE = load_region_masks()
