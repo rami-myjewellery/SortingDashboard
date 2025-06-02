@@ -12,6 +12,26 @@ from app.data.store import get_db
 router = APIRouter()
 client = OpenAI(api_key=environment_variables_provider.openai_api_key().strip())
 
+GROUND_TRUTH = {
+    "segment_6": 2,
+    "segment_4": 15,
+    "segment_2": 18,
+    "segment_1": 17,
+    "segment_3": 8,
+    "segment_5": 11
+}
+
+
+def calc_score(pred, target):
+    error = sum(abs(pred.get(k, 0) - target.get(k, 0)) for k in target)
+    max_possible = sum(target.values())
+    return max(0.0, 100.0 - (error / max_possible * 100.0))
+
+
+
+# Belt segments ordered physically from left to right
+BELT_ORDER_LEFT_TO_RIGHT = ["segment_6", "segment_4", "segment_2", "segment_1", "segment_3", "segment_5"]
+
 # ---------- debug output dir ------------------------------------------------
 CROP_DIR = Path(__file__).resolve().parents[2] / "scratch" / "crops"
 CROP_DIR.mkdir(parents=True, exist_ok=True)
@@ -20,28 +40,53 @@ CROP_DIR.mkdir(parents=True, exist_ok=True)
 class GPTAnswer(BaseModel):
     gpt_answer: dict[str, int]   # already parsed JSON
 
-# -- helper -----------------------------------------------------------------
-def mark_candidate_labels(rgb: np.ndarray) -> np.ndarray:
-    """
-    Finds bright-ish rectangles (label stickers) and puts a tiny red dot
-    at each centroid.  Very lightweight; improves GPT counting accuracy.
-    """
-    gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
-    # threshold on bright areas (labels are white-ish)
-    _, bw = cv2.threshold(gray, 160, 255, cv2.THRESH_BINARY)
-    kernel = np.ones((5, 5), np.uint8)
-    bw = cv2.morphologyEx(bw, cv2.MORPH_OPEN, kernel)
-    contours, _ = cv2.findContours(bw, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    out = rgb.copy()
+
+def segment_white_labels(img, threshold_value=210):
+    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    _, thresh = cv2.threshold(gray, threshold_value, 255, cv2.THRESH_BINARY)
+    kernel = np.ones((2, 2), np.uint8)
+    opened = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=1)
+    return opened
+
+def remove_small_regions(binary_img, min_area=25, draw_on=None, max_aspect_ratio=4.0, min_extent=0.2, min_solidity=0.5):
+    """
+    Filters small, elongated, hollow, and line-like regions.
+    Keeps regions that are squarish and solid (like label stickers).
+    """
+    contours, _ = cv2.findContours(binary_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    mask_cleaned = np.zeros_like(binary_img)
+    count = 0
+
     for cnt in contours:
-        x, y, w, h = cv2.boundingRect(cnt)
-        if w * h < 400:                      # ignore tiny specks
+        area = cv2.contourArea(cnt)
+        if area < min_area:
             continue
-        cx, cy = x + w//2, y + h//2
-        cv2.circle(out, (cx, cy), 4, (255, 0, 0), -1)  # red dot
-    return out
-# ---------------------------------------------------------------------------
+
+        x, y, w, h = cv2.boundingRect(cnt)
+        aspect_ratio = max(w / h, h / w)
+        if aspect_ratio > max_aspect_ratio:
+            continue
+
+        rect_area = w * h
+        extent = area / rect_area if rect_area > 0 else 0
+        if extent < min_extent:
+            continue
+
+        hull = cv2.convexHull(cnt)
+        hull_area = cv2.contourArea(hull)
+        solidity = area / hull_area if hull_area > 0 else 0
+        if solidity < min_solidity:
+            continue
+
+        # All checks passed
+        cv2.drawContours(mask_cleaned, [cnt], -1, 255, thickness=cv2.FILLED)
+        count += 1
+
+        if draw_on is not None:
+            cv2.rectangle(draw_on, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+    return mask_cleaned, count, draw_on
 
 @router.post("/analyze-image", response_model=GPTAnswer)
 async def analyze_image(
@@ -56,66 +101,48 @@ async def analyze_image(
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     for segment_id, img_bytes in crops_bin.items():
         img_path = CROP_DIR / f"{ts}_{segment_id}.png"
-        "img_path.write_bytes(img_bytes)"
-        print(f"Saved segment '{segment_id}' to {img_path}")
+        # img_path.write_bytes(img_bytes)
+        # print(f"Saved segment '{segment_id}' to {img_path}")
     # 2️⃣ save crops & prepare vision inputs (detail:high) one-by-one
     belt_counts: dict[str, int] = {}
 
-    prompt_single = (
-        "This image shows ONE conveyor-belt segment with parcels.\n"
-        "Count **every individual label sticker** you can see on the parcels. the camera quality is not too good so check for white squares"
-        "only respond in the integer of the amount of labels you see"
-    )
-
-    for bin in crops_bin:
+    for bin in BELT_ORDER_LEFT_TO_RIGHT:
+        if bin not in crops_bin:
+            continue
         png_bytes = crops_bin.get(bin)
 
-        # -- optional upscale for more pixels (2×) --------------------------
+        # Decode image
         rgb = cv2.imdecode(np.frombuffer(png_bytes, np.uint8), cv2.IMREAD_COLOR)
         rgb = cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB)
-        rgb = cv2.resize(rgb, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
-        rgb = cv2.resize(rgb, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
+
+        # Optional upscale for clarity
         rgb = cv2.resize(rgb, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
 
-        # -- optional marker dots ------------------------------------------
-        rgb = mark_candidate_labels(rgb)
-
-        # -- encode back to PNG --------------------------------------------
-        _, buf = cv2.imencode(".png", cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
-        png_bytes = buf.tobytes()
-
-        # -- debug-save to scratch -----------------------------------------
-        ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        # Save original crop
         uid = uuid.uuid4().hex[:6]
-        Path(CROP_DIR, f"{ts}_{uid}_{bin}.png").write_bytes(png_bytes)
+        ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        crop_path = CROP_DIR / f"{ts}_{uid}_{bin}_crop.png"
+        cv2.imwrite(str(crop_path), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
 
-        # -- build vision message ------------------------------------------
-        data_url = "data:image/png;base64," + base64.b64encode(png_bytes).decode()
+        # Segment white label candidates
+        label_mask = segment_white_labels(rgb)
+        raw_mask_path = CROP_DIR / f"{ts}_{uid}_{bin}_label_raw.png"
+        cv2.imwrite(str(raw_mask_path), label_mask)
 
-        messages = [{
-            "role": "user",
-            "content": [
-                {"type": "text", "text": prompt_single},
-                {"type": "image_url",
-                 "image_url": {"url": data_url, "detail": "high"}}
-            ],
-        }]
+        # Remove noise and count
+        annotated = rgb.copy()
+        cleaned_mask, count, annotated = remove_small_regions(label_mask, min_area=50, draw_on=annotated)
+        clean_mask_path = CROP_DIR / f"{ts}_{uid}_{bin}_label_clean.png"
+        annotated_path = CROP_DIR / f"{ts}_{uid}_{bin}_annotated.png"
+        cv2.imwrite(str(clean_mask_path), cleaned_mask)
+        cv2.imwrite(str(annotated_path), cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))
 
-        # 3️⃣ ask GPT-4o-mini-vision for this single belt
-        reply_text = client.chat.completions.create(
-            model="gpt-4o",
-            messages=messages,
-            temperature=0.2,
-        ).choices[0].message.content.strip()
+        # Normalize hallucinated counts
+        if count > 30:
+            count = 0
 
-        # 4️⃣ extract the integer (allow plain number or JSON literal)
-        try:
-            belt_counts[bin] = int(json.loads(reply_text)) or 0
-        except Exception:
-            # fallback: digits in the string
-            digits = "".join(ch for ch in reply_text if ch.isdigit())
-            belt_counts[bin] = int(digits) if digits else 1
-        # ----------- 3️⃣  UPDATE DASHBOARD KPI VALUES -------------------------
+        belt_counts[bin] = count
+
     db = get_db()["default"]  # single profile for now
 
     total_labels = sum(belt_counts.values())  # multi-belt = accumulated
@@ -136,4 +163,7 @@ async def analyze_image(
     # optional: flip dashboard status
     db.status = "risk" if error_labels > 4 else "good"
     print(db)
-    return {"gpt_answer": belt_counts}
+    ordered_counts = {k: belt_counts.get(k, 0) for k in BELT_ORDER_LEFT_TO_RIGHT}
+    success = calc_score(belt_counts, GROUND_TRUTH)
+    print(f"🎯 Label match success: {success:.2f}%")
+    return {"gpt_answer": ordered_counts}

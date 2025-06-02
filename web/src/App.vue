@@ -7,10 +7,27 @@ const data = ref(null)
 const API = 'https://sorting-dashboard-api-208732756826.europe-west4.run.app/dashboard/'
 
 /* 1) pull once on mount — or open a websocket for realtime */
-onMounted(async () => {
-  const res = await axios.get(API)
-  data.value = res.data
-  setBodyColor(data.value.status)
+onMounted(() => {
+  const fetchData = async () => {
+    try {
+      const res = await axios.get(API)
+      data.value = res.data
+      setBodyColor(data.value.status)
+    } catch (err) {
+      console.error("Failed to fetch dashboard data:", err)
+    }
+  }
+
+  // Fetch immediately on mount
+  fetchData()
+
+  // Poll every 5 seconds
+  const intervalId = setInterval(fetchData, 5000)
+
+  // Optional: clear interval when component unmounts
+  onBeforeUnmount(() => {
+    clearInterval(intervalId)
+  })
 })
 
 /* 2) helper to keep body class in sync */
