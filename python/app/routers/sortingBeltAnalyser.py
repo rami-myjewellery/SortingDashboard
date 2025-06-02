@@ -122,20 +122,20 @@ async def analyze_image(
         uid = uuid.uuid4().hex[:6]
         ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         crop_path = CROP_DIR / f"{ts}_{uid}_{bin}_crop.png"
-        cv2.imwrite(str(crop_path), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
+        # cv2.imwrite(str(crop_path), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
 
         # Segment white label candidates
         label_mask = segment_white_labels(rgb)
         raw_mask_path = CROP_DIR / f"{ts}_{uid}_{bin}_label_raw.png"
-        cv2.imwrite(str(raw_mask_path), label_mask)
+        # cv2.imwrite(str(raw_mask_path), label_mask)
 
         # Remove noise and count
         annotated = rgb.copy()
         cleaned_mask, count, annotated = remove_small_regions(label_mask, min_area=50, draw_on=annotated)
         clean_mask_path = CROP_DIR / f"{ts}_{uid}_{bin}_label_clean.png"
         annotated_path = CROP_DIR / f"{ts}_{uid}_{bin}_annotated.png"
-        cv2.imwrite(str(clean_mask_path), cleaned_mask)
-        cv2.imwrite(str(annotated_path), cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))
+        # cv2.imwrite(str(clean_mask_path), cleaned_mask)
+        # cv2.imwrite(str(annotated_path), cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))
 
         # Normalize hallucinated counts
         if count > 30:
