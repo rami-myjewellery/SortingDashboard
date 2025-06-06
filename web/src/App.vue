@@ -1,11 +1,15 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted,onBeforeUnmount } from 'vue'
 import axios from 'axios'
 import Dashboard from './components/Dashboard.vue'
+import { useRoute } from 'vue-router'
 
 const data = ref(null)
 const API = 'https://sorting-dashboard-api-208732756826.europe-west4.run.app/dashboard/'
+// const API = 'http://0.0.0.0:5001/dashboard/'
 
+const route = useRoute()
+const showPeople = route.query.bool === 'true'
 /* 1) pull once on mount — or open a websocket for realtime */
 onMounted(() => {
   const fetchData = async () => {

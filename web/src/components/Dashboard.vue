@@ -1,7 +1,13 @@
 <script setup>
 import KpiCard   from './KpiCard.vue'
 import PersonBar from './PersonBar.vue'
+import { useRoute } from 'vue-router'
+import { computed } from 'vue'
 
+const route = useRoute()
+
+// Computed to reactively track query changes
+const showPeople = computed(() => route.query.bool === 'true')
 defineProps({ data: Object })
 </script>
 
@@ -17,7 +23,7 @@ defineProps({ data: Object })
 
     <p class="history">{{ data.historyText }}</p>
 
-    <section class="people-list">
+    <section class="people-list" v-if="showPeople">
       <PersonBar
           v-for="p in data.people"
           :key="p.name"
