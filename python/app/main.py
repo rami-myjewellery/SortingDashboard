@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
-from app.routers import dashboard, sortingBeltAnalyser  # import other routers as you add them
+from app.routers import dashboard, sortingBeltAnalyser, \
+    PostSortingActionToDashboard  # import other routers as you add them
 
 
 def create_app() -> FastAPI:
@@ -24,6 +25,7 @@ def create_app() -> FastAPI:
 
     app.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
     app.include_router(sortingBeltAnalyser.router, prefix="/analysis", tags=["analyse-belt"])
+    app.include_router(PostSortingActionToDashboard.router, prefix="/actions", tags=["sorting-actions"])
 
     return app
 

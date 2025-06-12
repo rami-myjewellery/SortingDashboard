@@ -1,8 +1,7 @@
-# app/data/store.py
 from typing import Dict
 from app.models import Dashboard, Kpi, Person
 
-_db: Dict[str, Dashboard] = {         # exactly what you had before
+_db: Dict[str, Dashboard] = {
     "default": Dashboard(
         title="Sorting",
         status="good",

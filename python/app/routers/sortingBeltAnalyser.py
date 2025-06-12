@@ -7,10 +7,8 @@ from openai import OpenAI
 import cv2, numpy as np
 
 from app.imageFunctions.beltCropper import crop_belts
-from app.config.environment_variables_provider import environment_variables_provider
 from app.data.store import get_db
 router = APIRouter()
-client = OpenAI(api_key=environment_variables_provider.openai_api_key().strip())
 
 GROUND_TRUTH = {
     "segment_6": 2,
