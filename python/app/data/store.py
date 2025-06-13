@@ -6,9 +6,9 @@ _db: Dict[str, Dashboard] = {
         title="Sorting",
         status="good",
         kpis=[
-            Kpi(label="Error belt filling level", value=0, unit=" boxes"),
-            Kpi(label="Single belt filling level", value=0, unit=" boxes"),
-            Kpi(label="Multi belt filling level", value=0, unit=" boxes"),
+            Kpi(label="Error belt filling level", value=0, unit="packages"),
+            Kpi(label="Single belt filling level", value=0, unit="packages"),
+            Kpi(label="Multi belt filling level", value=0, unit="packages"),
         ],
         historyText="",
         people=[
