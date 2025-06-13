@@ -23,10 +23,23 @@ a,
 
 @media (min-width: 1024px) {
   body {
-    display: flex;
-    place-items: center;
+    display:flex;
+    flex-direction:column;
+    font-family:"Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    color:var(--clr-text-light);
+    transition:background 0.3s;
+  }
+  body.status-good {
+    background: var(--clr-bg-good);
   }
 
+  body.status-risk {
+    background: var(--clr-bg-risk);
+  }
+
+  body.status-bad {
+    background: var(--clr-bg-bad);
+  }
   #app {
     display: grid;
     grid-template-columns: 1fr 1fr;

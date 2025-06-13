@@ -157,7 +157,6 @@ async def analyze_image(
             kpi.value = highest_belt
             kpi.unit = "packages"
         elif kpi.label.startswith("Error"):
-            kpi.value = error_labels
             kpi.unit = "packages"
 
     # optional: flip dashboard status
