@@ -152,13 +152,13 @@ async def analyze_image(
     for kpi in db.kpis:
         if kpi.label.startswith("Multi"):
             kpi.value = total_labels
-            kpi.unit = " boxes"
+            kpi.unit = "packages"
         elif kpi.label.startswith("Single"):
             kpi.value = highest_belt
-            kpi.unit = " boxes"
+            kpi.unit = "packages"
         elif kpi.label.startswith("Error"):
             kpi.value = error_labels
-            kpi.unit = " boxes"
+            kpi.unit = "packages"
 
     # optional: flip dashboard status
     db.status = "risk" if error_labels > 4 else "good"
