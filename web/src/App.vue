@@ -6,7 +6,7 @@ import { useRoute } from 'vue-router'
 
 const data = ref(null)
 const API = 'https://sorting-dashboard-api-208732756826.europe-west4.run.app/dashboard/'
-// const API = 'http://0.0.0.0:5001/dashboard/'
+// const API = 'http://127.0.0.1:5001/dashboard/'
 
 const route = useRoute()
 const showPeople = route.query.bool === 'true'

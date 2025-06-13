@@ -10,7 +10,7 @@ def create_app() -> FastAPI:
     from app.routers import dashboard, sortingBeltAnalyser
 
     ALLOWED_ORIGINS = [
-        "http://localhost:5204",
+        "http://localhost:5182",
         "https://sorting-dashboard-web-208732756826.europe-west4.run.app",
     ]
 

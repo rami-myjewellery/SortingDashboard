@@ -138,6 +138,8 @@ async def analyze_image(
         # Normalize hallucinated counts
         if count > 30:
             count = 0
+        if count < 3:
+            count = 0
 
         belt_counts[bin] = count
 
