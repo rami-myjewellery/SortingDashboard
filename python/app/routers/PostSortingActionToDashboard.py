@@ -19,6 +19,7 @@ class PubSubMessage(BaseModel):
 async def handle_pubsub_push(pubsub_msg: PubSubMessage):
     try:
         # Decode base64 message data
+        print('COPY THIS ',pubsub_msg)
         encoded_data = pubsub_msg.message.get("data", "")
         decoded_json = base64.b64decode(encoded_data).decode("utf-8")
         job_data = json.loads(decoded_json)
