@@ -2,7 +2,6 @@ from copy import deepcopy
 from typing import Dict
 
 from fastapi import APIRouter, HTTPException, Query
-from setuptools.warnings import InformationOnly
 
 from app.models import Dashboard, Kpi
 from app.data.store import get_db, _tick_lock
