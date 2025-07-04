@@ -4,7 +4,7 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 import axios   from 'axios'
 import Dashboard from '@/components/Dashboard.vue'   // keep ✅
 import { useRoute } from 'vue-router'
-const API = 'https://sorting-dashboard-api-208732756826.europe-west4.run.app/dashboard/InbouyndAndBulk'
+const API = 'https://sorting-dashboard-api-208732756826.europe-west4.run.app/dashboard/InboundAndBulk'
 //
 // const API = 'http://127.0.0.1:5001/dashboard/InboundAndBulk'
 
