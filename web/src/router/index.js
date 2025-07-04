@@ -1,7 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Dashboard from '../components/Dashboard.vue'
+import Sorting from '../views/Sorting.vue'
 const routes = [
-    { path: '/', component: Dashboard },
+    { path: '/GeekPicking', component: Sorting },
+    { path: '/GeekInbound', component: Sorting },
+    { path: '/ErrorLanes', component: Sorting },
+    { path: '/FMA', component: Sorting },
+    { path: '/Sorting', component: Sorting },
+    { path: '/MonoPicking', component: Sorting },
+    { path: '/InboundAndBulk', component: Sorting },
+    { path: '/Returns', component: Sorting },
 ]
 
 const router = createRouter({
