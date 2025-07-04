@@ -3,6 +3,7 @@ import { computed } from 'vue'
 
 const props = defineProps({
   person:        { type: Object, required: true },
+  action:        { type: Object, required: true },
   idleThreshold: { type: Number, default: 40 }
 })
 
@@ -17,6 +18,7 @@ const perfClass = computed(() => {
 <template>
   <div class="person-bar" :class="perfClass">
     <span class="name">{{ person.name }}</span>
+    <div style="font-size: medium; text-align: right" class="name">{{ person.action }}</div>
 
     <div class="details">
       <div class="clock" :title="`${person.idleSeconds}s`"></div>

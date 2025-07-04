@@ -4,11 +4,12 @@ from pathlib import Path
 from skimage.measure import label
 
 APP_DIR = Path(__file__).resolve().parent.parent
-MASK_FILE = APP_DIR / "assets" / "belt_mask.png"
+
 
 EXPECTED_SEGMENTS = 6
 
 def load_region_masks():
+    MASK_FILE = str(APP_DIR)[:-5]+ "assets/belt_mask.png"
     mask_img = cv2.imread(str(MASK_FILE))
     if mask_img is None:
         raise FileNotFoundError(

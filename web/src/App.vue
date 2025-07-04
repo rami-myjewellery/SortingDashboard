@@ -5,8 +5,8 @@ import Dashboard from './components/Dashboard.vue'
 import { useRoute } from 'vue-router'
 
 const data = ref(null)
-const API = 'https://sorting-dashboard-api-208732756826.europe-west4.run.app/dashboard/'
-// const API = 'http://127.0.0.1:5001/dashboard/'
+// const API = 'https://sorting-dashboard-api-208732756826.europe-west4.run.app/dashboard/'
+const API = 'http://127.0.0.1:5001/dashboard/'
 
 const route = useRoute()
 const showPeople = route.query.bool === 'true'
@@ -36,6 +36,7 @@ onMounted(() => {
 
 /* 2) helper to keep body class in sync */
 function setBodyColor(status) {
+  console.error('setBodyColor', 'status-'+status)
   document.body.classList.remove('status-good', 'status-risk', 'status-bad')
   document.body.classList.add(`status-${status}`)
 }

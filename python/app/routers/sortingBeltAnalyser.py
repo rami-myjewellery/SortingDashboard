@@ -1,12 +1,11 @@
 # app/routers/sortingBeltAnalyser.py
-import base64, uuid, datetime, json
+import uuid, datetime
 from pathlib import Path
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, HTTPException
 from pydantic import BaseModel
-from openai import OpenAI
 import cv2, numpy as np
 
-from app.imageFunctions.beltCropper import crop_belts
+from app.utils.imageFunctions.beltCropper import crop_belts
 from app.data.store import get_db
 router = APIRouter()
 

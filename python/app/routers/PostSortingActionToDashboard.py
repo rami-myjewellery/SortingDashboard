@@ -1,50 +1,91 @@
+# app/routers/PostSortingActionToDashboard.py
+# ─────────────────────────────────────────────────────────────────────────────
+#  • Decodes Pub/Sub messages coming from GCP
+#  • Keeps a 60-second deque of job timestamps per operator
+#  • “speed” is the activity-bar value: it jumps to 100 on an action and
+#    drifts down elsewhere (via the heartbeat task)
+# ─────────────────────────────────────────────────────────────────────────────
+
+from __future__ import annotations
+
 import base64
 import json
+from collections import deque
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Any, Dict
 
 from app.data.store import get_db
 from app.models import Person
+from app.utils.MainUtils import get_or_create_person
 
 router = APIRouter()
 
-
+# ── Input contract ───────────────────────────────────────────────────────────
 class PubSubMessage(BaseModel):
     message: Dict[str, Any]
     subscription: str
 
+# ── Parameters ───────────────────────────────────────────────────────────────
+WINDOW   = timedelta(seconds=60)   # size of the rolling window
+MAX_APM  = 100                     # full-bar value
 
+# ── Endpoint ─────────────────────────────────────────────────────────────────
 @router.post("/pubsub/sorting-action")
 async def handle_pubsub_push(pubsub_msg: PubSubMessage):
+    # 1) Decode Pub/Sub payload ------------------------------------------------
     try:
-        # Decode base64 message data
-        print('COPY THIS ',pubsub_msg)
-        encoded_data = pubsub_msg.message.get("data", "")
-        decoded_json = base64.b64decode(encoded_data).decode("utf-8")
-        job_data = json.loads(decoded_json)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to decode base64 payload: {e}")
+        data_b64: str = pubsub_msg.message.get("data", "")
+        decoded_json  = base64.b64decode(data_b64).decode("utf-8")
+        job_data: Dict[str, Any] = json.loads(decoded_json)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Failed to decode Pub/Sub payload: {exc}",
+        )
 
-    # Extract values
-    job_id = job_data.get("ID")
-    job_type = job_data.get("NAME", "").strip()
-    profile = job_data.get("PROFILE", "").strip()
-    target_server = job_data.get("TARGETSERVER", "")
-    error_value = job_data.get("segment_6", 0) or job_data.get("segment_error", 0)
+    # 2) Extract useful fields -------------------------------------------------
+    job_id        = job_data.get("ID")
+    job_type      = job_data.get("NAME", "").strip()
+    operator_name = job_data.get("PROFILE", "").strip() or "Unknown"
+    now           = datetime.now(timezone.utc)
 
-    # Access dashboard
-    db = get_db()["default"]
+    # 3) Locate / create the operator record ----------------------------------
+    db                = get_db()["default"]
+    person: Person    = get_or_create_person(db.people, operator_name,job_type  )
 
-    # Append to people as a rolling action log
-    action = Person(
-        name=f"{profile} → {job_type}",
-        speed=100,
-        idleSeconds=0
-    )
+    # 4) Make sure the rolling deque exists -----------------------------------
+    if not hasattr(person, "job_times"):
+        person.job_times = deque(maxlen=MAX_APM)   # type: ignore[attr-defined]
 
-    db.people.append(action)
-    db.people = db.people[-5:]  # Keep last 5 only
+    job_times: deque = person.job_times            # type: ignore[attr-defined]
 
-    print(f"✅ Updated dashboard for job {job_id} / {job_type}")
+    # 5) Record the new action -------------------------------------------------
+    job_times.append(now.timestamp())
+
+    # (optional) prune anything older than WINDOW just to keep the deque tidy
+    cutoff = (now - WINDOW).timestamp()
+    while job_times and job_times[0] < cutoff:
+        job_times.popleft()
+
+    # ——— Reset activity bar to 100 ———
+    person.speed = MAX_APM
+
+    # 6) Book-keeping ----------------------------------------------------------
+    person.jobs       += 1
+    person.last_seen   = now
+    person.idleSeconds = 0
+
+    for p in db.people:
+        if p is person or not p.last_seen:
+            continue
+        p.idleSeconds = int((now - p.last_seen).total_seconds())
+
+    # 7) Keep only the five most-recent operators -----------------------------
+    db.people.sort(key=lambda p: p.last_seen or now, reverse=True)
+    db.people = db.people[:5]
+
+    print(f"✅ Dashboard updated: {operator_name} ran '{job_type}' (#{job_id})")
     return {"status": "success", "job_id": job_id}

@@ -1,15 +1,27 @@
-from pydantic import BaseModel
-from typing import List, Literal
+from collections import deque
+from datetime import datetime
+
+from pydantic import BaseModel, Field
+from typing import List, Literal, Deque
+
+MAX_APM = 100                    # hard cap for dashboard display
+
 
 class Kpi(BaseModel):
     label: str
     value: float
     unit: str
 
+
 class Person(BaseModel):
     name: str
-    speed: int          # 0-100
-    idleSeconds: int
+    action:str
+    speed: int          # smoothed jobs/min
+    idleSeconds: int    # seconds since last activity
+    last_seen: datetime | None = None
+    jobs: int = 0       # total jobs handled (optional but handy)
+    job_times: Deque[float] = Field(default_factory=lambda: deque(maxlen=MAX_APM))
+
 
 class Dashboard(BaseModel):
     title: str
@@ -17,4 +29,4 @@ class Dashboard(BaseModel):
     kpis: List[Kpi]
     historyText: str
     people: List[Person]
-    idleThreshold: int = 40
+    idleThreshold: int = 60

@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 from typing import Dict
 
-from app.imageFunctions.maskLoader import FRAME_SIZE, REGION_MASKS
+from app.utils.imageFunctions.maskLoader import FRAME_SIZE, REGION_MASKS
 
 def crop_belts(raw_img_bytes: bytes) -> Dict[str, bytes]:
     img = cv2.imdecode(np.frombuffer(raw_img_bytes, np.uint8), cv2.IMREAD_COLOR)
