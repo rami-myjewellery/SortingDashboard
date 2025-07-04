@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed,ref, onMounted  } from 'vue'
 import { useRoute } from 'vue-router'
 
 import KpiCard   from './KpiCard.vue'
@@ -21,8 +21,15 @@ const props = defineProps<{
 
 /* ───────── route helpers ───────── */
 const route      = useRoute()
-const showPeople = computed(() => route.query.bool === 'true')
 const mode       = computed(() => route.params.mode as string | undefined)
+/* start with a default – must match the server’s HTML */
+const showPeople = ref(false)
+
+/* run only in the browser */
+onMounted(() => {
+  showPeople.value =
+      new URLSearchParams(window.location.search).get('bool') === 'true'
+})
 </script>
 
 <template>
@@ -38,9 +45,10 @@ const mode       = computed(() => route.params.mode as string | undefined)
         />
       </div>
     </section>
+    
 
     <p class="history">{{ props.data.historyText }}</p>
-
+    <ClientOnly>
     <section class="people-list" v-if="showPeople">
       <PersonBar
           v-for="p in props.data.people"
@@ -49,5 +57,6 @@ const mode       = computed(() => route.params.mode as string | undefined)
           :idle-threshold="props.data.idleThreshold ?? 40"
       />
     </section>
+    </ClientOnly>
   </main>
 </template>

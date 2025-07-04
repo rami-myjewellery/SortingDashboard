@@ -2,8 +2,10 @@ from copy import deepcopy
 from typing import Dict
 
 from fastapi import APIRouter, HTTPException, Query
+from setuptools.warnings import InformationOnly
+
 from app.models import Dashboard, Kpi
-from app.data.store import get_db
+from app.data.store import get_db, _tick_lock
 
 router = APIRouter()
 
@@ -65,9 +67,9 @@ PATCHES: Dict[str, Dict] = {
     "Sorting": {
         "title": "Sorter Overview",
         "kpis": [
-            Kpi(label="Parcels sorted",           value=0, unit="parcels"),
-            Kpi(label="Sorter utilisation",       value=0, unit="%"),
-            Kpi(label="Active destinations",      value=0, unit="lanes"),
+            Kpi(label="Error belt filling level", value=0, unit="packages"),
+            Kpi(label="Single belt filling level", value=0, unit="packages"),
+            Kpi(label="Multi belt filling level", value=0, unit="packages"),
         ],
     },
     "MonoPicking": {
@@ -96,57 +98,101 @@ PATCHES: Dict[str, Dict] = {
     },
 }
 
-# ---------------------------------------------------------------------------
-# 3.  Helper that applies a patch and stores the snapshot in _db
-# ---------------------------------------------------------------------------
-def _snapshot(mode: str, profile: str = "default") -> Dashboard:
-    db: Dict[str, Dashboard] = get_db()
-
-    if mode not in PATCHES:
-        raise HTTPException(status_code=404, detail="unknown mode")
-
-    # start from a fresh copy of the base template
-    dash = deepcopy(_BASE)
-
-    # apply the endpoint-specific changes
-    for field, value in PATCHES[mode].items():
-        setattr(dash, field, value)
-
-    # store / overwrite
-    db[profile + ":" + mode] = dash
-    return dash
 
 # ---------------------------------------------------------------------------
-# 4.  Eight GET endpoints – one liner each
+# Endpoints – all using the same algorithm
 # ---------------------------------------------------------------------------
-@router.get("/GeekPicking",    response_model=Dashboard)
+@router.get("/GeekPicking", response_model=Dashboard)
 def get_geek_picking(profile: str = Query("default")):
-    return _snapshot("GeekPicking", profile)
+    db: Dict[str, Dashboard] = get_db()
+    patch = PATCHES.get("GeekPicking")
+    if not patch:
+        raise HTTPException(status_code=404, detail="No patch for endpoint")
 
-@router.get("/GeekInbound",    response_model=Dashboard)
+    db[profile].title = patch["title"]
+    db[profile].kpis = patch["kpis"]
+    return db[profile]
+
+
+@router.get("/GeekInbound", response_model=Dashboard)
 def get_geek_inbound(profile: str = Query("default")):
-    return _snapshot("GeekInbound", profile)
+    db: Dict[str, Dashboard] = get_db()
+    patch = PATCHES.get("GeekInbound")
+    if not patch:
+        raise HTTPException(status_code=404, detail="No patch for endpoint")
 
-@router.get("/ErrorLanes",     response_model=Dashboard)
+    db[profile].title = patch["title"]
+    db[profile].kpis = patch["kpis"]
+    return db[profile]
+
+
+@router.get("/ErrorLanes", response_model=Dashboard)
 def get_error_lanes(profile: str = Query("default")):
-    return _snapshot("ErrorLanes", profile)
+    db: Dict[str, Dashboard] = get_db()
+    patch = PATCHES.get("ErrorLanes")
+    if not patch:
+        raise HTTPException(status_code=404, detail="No patch for endpoint")
 
-@router.get("/FMA",            response_model=Dashboard)
+    db[profile].title = patch["title"]
+    db[profile].kpis = patch["kpis"]
+    return db[profile]
+
+
+@router.get("/FMA", response_model=Dashboard)
 def get_fma(profile: str = Query("default")):
-    return _snapshot("FMA", profile)
+    db: Dict[str, Dashboard] = get_db()
+    patch = PATCHES.get("FMA")
+    if not patch:
+        raise HTTPException(status_code=404, detail="No patch for endpoint")
 
-@router.get("/Sorting",        response_model=Dashboard)
+    db[profile].title = patch["title"]
+    db[profile].kpis = patch["kpis"]
+    return db[profile]
+
+
+@router.get("/Sorting", response_model=Dashboard)
 def get_sorting(profile: str = Query("default")):
-    return _snapshot("Sorting", profile)
+    db: Dict[str, Dashboard] = get_db()
+    patch = PATCHES.get("Sorting")
+    if not patch:
+        raise HTTPException(status_code=404, detail="No patch for endpoint")
 
-@router.get("/MonoPicking",    response_model=Dashboard)
+    db[profile].title = patch["title"]
+    db[profile].kpis = patch["kpis"]
+    return db[profile]
+
+
+@router.get("/MonoPicking", response_model=Dashboard)
 def get_mono_picking(profile: str = Query("default")):
-    return _snapshot("MonoPicking", profile)
+    db: Dict[str, Dashboard] = get_db()
+    patch = PATCHES.get("MonoPicking")
+    if not patch:
+        raise HTTPException(status_code=404, detail="No patch for endpoint")
+
+    db[profile].title = patch["title"]
+    db[profile].kpis = patch["kpis"]
+    return db[profile]
+
 
 @router.get("/InboundAndBulk", response_model=Dashboard)
 def get_inbound_bulk(profile: str = Query("default")):
-    return _snapshot("InboundAndBulk", profile)
+    db: Dict[str, Dashboard] = get_db()
+    patch = PATCHES.get("InboundAndBulk")
+    if not patch:
+        raise HTTPException(status_code=404, detail="No patch for endpoint")
 
-@router.get("/Returns",        response_model=Dashboard)
+    db[profile].title = patch["title"]
+    db[profile].kpis = patch["kpis"]
+    return db[profile]
+
+
+@router.get("/Returns", response_model=Dashboard)
 def get_returns(profile: str = Query("default")):
-    return _snapshot("Returns", profile)
+    db: Dict[str, Dashboard] = get_db()
+    patch = PATCHES.get("Returns")
+    if not patch:
+        raise HTTPException(status_code=404, detail="No patch for endpoint")
+
+    db[profile].title = patch["title"]
+    db[profile].kpis = patch["kpis"]
+    return db[profile]
