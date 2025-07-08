@@ -157,6 +157,7 @@ async def analyze_image(
             kpi.unit = "packages"
         elif kpi.label.startswith("Error"):
             kpi.unit = "packages"
+            kpi.value = error_labels
 
     # optional: flip dashboard status
     db.status = "risk" if error_labels > 4 else "good"
