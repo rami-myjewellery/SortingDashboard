@@ -160,7 +160,7 @@ async def analyze_image(
             kpi.value = error_labels
 
     # optional: flip dashboard status
-    db.status = "risk" if error_labels > 4 else "good"
+    db.status = "risk" if error_labels > 4 or any(count > 9 for count in belt_counts.values()) else "good"
     print(db)
     ordered_counts = {k: belt_counts.get(k, 0) for k in BELT_ORDER_LEFT_TO_RIGHT}
     success = calc_score(belt_counts, GROUND_TRUTH)

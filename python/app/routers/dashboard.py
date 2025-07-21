@@ -108,6 +108,7 @@ def get_geek_picking(profile: str = Query("default")):
     if not patch:
         raise HTTPException(status_code=404, detail="No patch for endpoint")
 
+    db[profile].status = patch["good"]
     db[profile].title = patch["title"]
     db[profile].kpis = patch["kpis"]
     return db[profile]
@@ -120,6 +121,7 @@ def get_geek_inbound(profile: str = Query("default")):
     if not patch:
         raise HTTPException(status_code=404, detail="No patch for endpoint")
 
+    db[profile].status = patch["good"]
     db[profile].title = patch["title"]
     db[profile].kpis = patch["kpis"]
     return db[profile]
@@ -132,6 +134,7 @@ def get_error_lanes(profile: str = Query("default")):
     if not patch:
         raise HTTPException(status_code=404, detail="No patch for endpoint")
 
+    db[profile].status = patch["good"]
     db[profile].title = patch["title"]
     db[profile].kpis = patch["kpis"]
     return db[profile]
@@ -144,6 +147,7 @@ def get_fma(profile: str = Query("default")):
     if not patch:
         raise HTTPException(status_code=404, detail="No patch for endpoint")
 
+    db[profile].status = patch["good"]
     db[profile].title = patch["title"]
     db[profile].kpis = patch["kpis"]
     return db[profile]
@@ -167,7 +171,8 @@ def get_mono_picking(profile: str = Query("default")):
     patch = PATCHES.get("MonoPicking")
     if not patch:
         raise HTTPException(status_code=404, detail="No patch for endpoint")
-
+    
+    db[profile].status = patch["good"]
     db[profile].title = patch["title"]
     db[profile].kpis = patch["kpis"]
     return db[profile]
@@ -179,7 +184,7 @@ def get_inbound_bulk(profile: str = Query("default")):
     patch = PATCHES.get("InboundAndBulk")
     if not patch:
         raise HTTPException(status_code=404, detail="No patch for endpoint")
-
+    db[profile].status = patch["good"]
     db[profile].title = patch["title"]
     db[profile].kpis = patch["kpis"]
     return db[profile]
@@ -192,6 +197,7 @@ def get_returns(profile: str = Query("default")):
     if not patch:
         raise HTTPException(status_code=404, detail="No patch for endpoint")
 
+    db[profile].status = patch["good"]
     db[profile].title = patch["title"]
     db[profile].kpis = patch["kpis"]
     return db[profile]
