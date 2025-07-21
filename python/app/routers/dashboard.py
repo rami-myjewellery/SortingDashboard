@@ -104,100 +104,115 @@ PATCHES: Dict[str, Dict] = {
 @router.get("/GeekPicking", response_model=Dashboard)
 def get_geek_picking(profile: str = Query("default")):
     db: Dict[str, Dashboard] = get_db()
+    copy_db = db
+    
     patch = PATCHES.get("GeekPicking")
     if not patch:
         raise HTTPException(status_code=404, detail="No patch for endpoint")
 
-    db[profile].status = "good"
-    db[profile].title = patch["title"]
-    db[profile].kpis = patch["kpis"]
-    return db[profile]
+    copy_db[profile].status = "good"
+    copy_db[profile].title = patch["title"]
+    copy_db[profile].kpis = patch["kpis"]
+    return copy_db[profile]
 
 
 @router.get("/GeekInbound", response_model=Dashboard)
 def get_geek_inbound(profile: str = Query("default")):
     db: Dict[str, Dashboard] = get_db()
+    copy_db = db
+    
     patch = PATCHES.get("GeekInbound")
     if not patch:
         raise HTTPException(status_code=404, detail="No patch for endpoint")
 
-    db[profile].status = "good"
-    db[profile].title = patch["title"]
-    db[profile].kpis = patch["kpis"]
-    return db[profile]
+    copy_db[profile].status = "good"
+    copy_db[profile].title = patch["title"]
+    copy_db[profile].kpis = patch["kpis"]
+    return copy_db[profile]
 
 
 @router.get("/ErrorLanes", response_model=Dashboard)
 def get_error_lanes(profile: str = Query("default")):
     db: Dict[str, Dashboard] = get_db()
+    copy_db = db
+    
     patch = PATCHES.get("ErrorLanes")
     if not patch:
         raise HTTPException(status_code=404, detail="No patch for endpoint")
 
-    db[profile].status = "good"
-    db[profile].title = patch["title"]
-    db[profile].kpis = patch["kpis"]
-    return db[profile]
+    copy_db[profile].status = "good"
+    copy_db[profile].title = patch["title"]
+    copy_db[profile].kpis = patch["kpis"]
+    return copy_db[profile]
 
 
 @router.get("/FMA", response_model=Dashboard)
 def get_fma(profile: str = Query("default")):
     db: Dict[str, Dashboard] = get_db()
+    copy_db = db
+    
     patch = PATCHES.get("FMA")
     if not patch:
         raise HTTPException(status_code=404, detail="No patch for endpoint")
 
-    db[profile].status = "good"
-    db[profile].title = patch["title"]
-    db[profile].kpis = patch["kpis"]
-    return db[profile]
+    copy_db[profile].status = "good"
+    copy_db[profile].title = patch["title"]
+    copy_db[profile].kpis = patch["kpis"]
+    return copy_db[profile]
 
 
 @router.get("/Sorting", response_model=Dashboard)
 def get_sorting(profile: str = Query("default")):
     db: Dict[str, Dashboard] = get_db()
+    copy_db = db
+    
     patch = PATCHES.get("Sorting")
     if not patch:
         raise HTTPException(status_code=404, detail="No patch for endpoint")
 
-    db[profile].title = patch["title"]
-    db[profile].kpis = patch["kpis"]
-    return db[profile]
+    copy_db[profile].title = patch["title"]
+    copy_db[profile].kpis = patch["kpis"]
+    return copy_db[profile]
 
 
 @router.get("/MonoPicking", response_model=Dashboard)
 def get_mono_picking(profile: str = Query("default")):
     db: Dict[str, Dashboard] = get_db()
+    copy_db = db
+    
     patch = PATCHES.get("MonoPicking")
     if not patch:
         raise HTTPException(status_code=404, detail="No patch for endpoint")
     
-    db[profile].status = "good"
-    db[profile].title = patch["title"]
-    db[profile].kpis = patch["kpis"]
-    return db[profile]
+    copy_db[profile].status = "good"
+    copy_db[profile].title = patch["title"]
+    copy_db[profile].kpis = patch["kpis"]
+    return copy_db[profile]
 
 
 @router.get("/InboundAndBulk", response_model=Dashboard)
 def get_inbound_bulk(profile: str = Query("default")):
     db: Dict[str, Dashboard] = get_db()
+    copy_db = db
+    
     patch = PATCHES.get("InboundAndBulk")
     if not patch:
         raise HTTPException(status_code=404, detail="No patch for endpoint")
-    db[profile].status = "good"
-    db[profile].title = patch["title"]
-    db[profile].kpis = patch["kpis"]
-    return db[profile]
+    copy_db[profile].status = "good"
+    copy_db[profile].title = patch["title"]
+    copy_db[profile].kpis = patch["kpis"]
+    return copy_db[profile]
 
 
 @router.get("/Returns", response_model=Dashboard)
 def get_returns(profile: str = Query("default")):
     db: Dict[str, Dashboard] = get_db()
+    copy_db = db
     patch = PATCHES.get("Returns")
     if not patch:
         raise HTTPException(status_code=404, detail="No patch for endpoint")
 
-    db[profile].status = "good"
-    db[profile].title = patch["title"]
-    db[profile].kpis = patch["kpis"]
-    return db[profile]
+    copy_db[profile].status = "good"
+    copy_db[profile].title = patch["title"]
+    copy_db[profile].kpis = patch["kpis"]
+    return copy_db[profile]
