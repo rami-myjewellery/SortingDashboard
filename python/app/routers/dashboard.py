@@ -33,7 +33,7 @@ PATCHES: Dict[str, Dict] = {
         "kpis": [
             Kpi(label="wat", value=0, unit="Comming Soon"),
             Kpi(label="denk", value=0, unit="Weet jij een Metric?"),
-            Kpi(label="jij?", value=0, unit="Deel het met ons?"),
+            Kpi(label="jij?", value=0, unit="Deel het met ons!"),
         ],
     },
     "GeekInbound": {
@@ -41,7 +41,7 @@ PATCHES: Dict[str, Dict] = {
         "kpis": [
             Kpi(label="wat", value=0, unit="Comming Soon"),
             Kpi(label="denk", value=0, unit="Weet jij een Metric?"),
-            Kpi(label="jij?", value=0, unit="Deel het met ons?"),
+            Kpi(label="jij?", value=0, unit="Deel het met ons!"),
 
         ],
     },
@@ -50,7 +50,7 @@ PATCHES: Dict[str, Dict] = {
         "kpis": [
             Kpi(label="wat", value=0, unit="Comming Soon"),
             Kpi(label="denk", value=0, unit="Weet jij een Metric?"),
-            Kpi(label="jij?", value=0, unit="Deel het met ons?"),
+            Kpi(label="jij?", value=0, unit="Deel het met ons!"),
 
         ],
     },
@@ -59,7 +59,7 @@ PATCHES: Dict[str, Dict] = {
         "kpis": [
             Kpi(label="wat", value=0, unit="Comming Soon"),
             Kpi(label="denk", value=0, unit="Weet jij een Metric?"),
-            Kpi(label="jij?", value=0, unit="Deel het met ons?"),
+            Kpi(label="jij?", value=0, unit="Deel het met ons!"),
 
         ],
     },
@@ -68,7 +68,7 @@ PATCHES: Dict[str, Dict] = {
         "kpis": [
             Kpi(label="wat", value=0, unit="Comming Soon"),
             Kpi(label="denk", value=0, unit="Weet jij een Metric?"),
-            Kpi(label="jij?", value=0, unit="Deel het met ons?"),
+            Kpi(label="jij?", value=0, unit="Deel het met ons!"),
 
         ],
     },
@@ -77,7 +77,7 @@ PATCHES: Dict[str, Dict] = {
         "kpis": [
             Kpi(label="wat", value=0, unit="Comming Soon"),
             Kpi(label="denk", value=0, unit="Weet jij een Metric?"),
-            Kpi(label="jij?", value=0, unit="Deel het met ons?"),
+            Kpi(label="jij?", value=0, unit="Deel het met ons!"),
 
         ],
     },
@@ -86,7 +86,7 @@ PATCHES: Dict[str, Dict] = {
         "kpis": [
             Kpi(label="wat", value=0, unit="Comming Soon"),
             Kpi(label="denk", value=0, unit="Weet jij een Metric?"),
-            Kpi(label="jij?", value=0, unit="Deel het met ons?"),
+            Kpi(label="jij?", value=0, unit="Deel het met ons!"),
 
         ],
     },
