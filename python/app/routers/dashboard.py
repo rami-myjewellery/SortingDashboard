@@ -31,57 +31,63 @@ PATCHES: Dict[str, Dict] = {
     "GeekPicking": {
         "title": "Geek Picking",
         "kpis": [
-            Kpi(label="Comming Soon", value=0, unit="wat"),
-            Kpi(label="Weet jij een Metric?", value=0, unit="denk"),
-            Kpi(label="Deel het met ons", value=0, unit="jij?"),
+            Kpi(label="wat", value=0, unit="Comming Soon"),
+            Kpi(label="denk", value=0, unit="Weet jij een Metric?"),
+            Kpi(label="jij?", value=0, unit="Deel het met ons?"),
         ],
     },
     "GeekInbound": {
         "title": "Geek Inbound",
         "kpis": [
-            Kpi(label="Parcels received", value=0, unit="parcels"),
-            Kpi(label="Put-away backlog", value=0, unit="parcels"),
-            Kpi(label="Average unload time", value=0, unit="min"),
+            Kpi(label="wat", value=0, unit="Comming Soon"),
+            Kpi(label="denk", value=0, unit="Weet jij een Metric?"),
+            Kpi(label="jij?", value=0, unit="Deel het met ons?"),
+
         ],
     },
     "ErrorLanes": {
         "title": "Error Handling",
         "kpis": [
-            Kpi(label="Error belt fill level", value=0, unit="packages"),
-            Kpi(label="Mis-sorts per hour", value=0, unit="items/h"),
-            Kpi(label="Blocked chutes", value=0, unit="chutes"),
+            Kpi(label="wat", value=0, unit="Comming Soon"),
+            Kpi(label="denk", value=0, unit="Weet jij een Metric?"),
+            Kpi(label="jij?", value=0, unit="Deel het met ons?"),
+
         ],
     },
     "FMA": {
         "title": "FMA Pick & Pack",
         "kpis": [
-            Kpi(label="Orders packed", value=0, unit="orders"),
-            Kpi(label="Packing speed", value=0, unit="orders/h"),
-            Kpi(label="Packing accuracy", value=0, unit="%"),
+            Kpi(label="wat", value=0, unit="Comming Soon"),
+            Kpi(label="denk", value=0, unit="Weet jij een Metric?"),
+            Kpi(label="jij?", value=0, unit="Deel het met ons?"),
+
         ],
     },
     "MonoPicking": {
         "title": "Mono Picking",
         "kpis": [
-            Kpi(label="Mono picks per hour", value=0, unit="items/h"),
-            Kpi(label="Open mono orders", value=0, unit="orders"),
-            Kpi(label="Picking accuracy", value=0, unit="%"),
+            Kpi(label="wat", value=0, unit="Comming Soon"),
+            Kpi(label="denk", value=0, unit="Weet jij een Metric?"),
+            Kpi(label="jij?", value=0, unit="Deel het met ons?"),
+
         ],
     },
     "InboundAndBulk": {
         "title": "Inbound & Bulk Handling",
         "kpis": [
-            Kpi(label="Bulk pallets processed", value=0, unit="pallets"),
-            Kpi(label="Receiving backlog", value=0, unit="pallets"),
-            Kpi(label="Avg pallet wait time", value=0, unit="min"),
+            Kpi(label="wat", value=0, unit="Comming Soon"),
+            Kpi(label="denk", value=0, unit="Weet jij een Metric?"),
+            Kpi(label="jij?", value=0, unit="Deel het met ons?"),
+
         ],
     },
     "Returns": {
         "title": "Returns",
         "kpis": [
-            Kpi(label="Returns processed", value=0, unit="items"),
-            Kpi(label="Return backlog", value=0, unit="items"),
-            Kpi(label="Disposition rate", value=0, unit="%"),
+            Kpi(label="wat", value=0, unit="Comming Soon"),
+            Kpi(label="denk", value=0, unit="Weet jij een Metric?"),
+            Kpi(label="jij?", value=0, unit="Deel het met ons?"),
+
         ],
     },
 }
