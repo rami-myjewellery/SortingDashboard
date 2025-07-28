@@ -15,7 +15,8 @@ class Kpi(BaseModel):
 
 class Person(BaseModel):
     name: str
-    action:str
+    comment:str
+    category:str
     speed: int          # smoothed jobs/min
     idleSeconds: int    # seconds since last activity
     last_seen: datetime | None = None

@@ -31,9 +31,8 @@ class PubSubMessage(BaseModel):
 # ── Parameters ───────────────────────────────────────────────────────────────
 WINDOW   = timedelta(seconds=60)   # size of the rolling window
 MAX_APM  = 100                     # full-bar value
-
 # ── Endpoint ─────────────────────────────────────────────────────────────────
-@router.post("/pubsub/sorting-action")
+@router.post("/pubsub/jobs-action")
 async def handle_pubsub_push(pubsub_msg: PubSubMessage):
     # 1) Decode Pub/Sub payload ------------------------------------------------
     try:
@@ -47,14 +46,15 @@ async def handle_pubsub_push(pubsub_msg: PubSubMessage):
         )
 
     # 2) Extract useful fields -------------------------------------------------
-    job_id        = job_data.get("ID")
-    job_type      = job_data.get("NAME", "").strip()
-    operator_name = job_data.get("PROFILE", "").strip() or "Unknown"
+    job_id        = job_data.get("HEADER_ID")
+    category      = job_data.get("category", "").strip()  # Change here
+    comment       = job_data.get("comment", "").strip()   # Change here
+    operator_name = job_data.get("EMPLOYEE_CODE", "").strip() or "Unknown"
     now           = datetime.now(timezone.utc)
 
     # 3) Locate / create the operator record ----------------------------------
     db                = get_db()["default"]
-    person: Person    = get_or_create_person(db.people, operator_name,job_type  )
+    person: Person    = get_or_create_person(db.people, operator_name, category , comment  )  # Change here
 
     # 4) Make sure the rolling deque exists -----------------------------------
     if not hasattr(person, "job_times"):
@@ -77,6 +77,8 @@ async def handle_pubsub_push(pubsub_msg: PubSubMessage):
     person.jobs       += 1
     person.last_seen   = now
     person.idleSeconds = 0
+    person.category = category  # Add category to person record
+    person.comment = comment    # Add comment to person record
 
     for p in db.people:
         if p is person or not p.last_seen:
@@ -87,5 +89,5 @@ async def handle_pubsub_push(pubsub_msg: PubSubMessage):
     db.people.sort(key=lambda p: p.last_seen or now, reverse=True)
     db.people = db.people[:5]
 
-    print(f"✅ Dashboard updated: {operator_name} ran '{job_type}' (#{job_id})")
+    print(f"✅ Dashboard updated: {operator_name} ran '{category}' (#{job_id})")
     return {"status": "success", "job_id": job_id}
