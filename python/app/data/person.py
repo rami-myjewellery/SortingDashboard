@@ -4,7 +4,7 @@ from typing import Deque
 
 from pydantic import BaseModel, Field
 
-from app.routers.PostSortingActionToDashboard import MAX_APM
+from app.routers.PostJobsActionToDashboard import MAX_APM
 
 
 class Person(BaseModel):

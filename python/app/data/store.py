@@ -1,10 +1,3 @@
-"""
-app/data/store.py
-──────────────────────────────────────────────────────────────────────────────
-• Keeps the in-memory Dashboard singleton
-• A separate daemon thread calls `_tick_once()` every second
-• Thread-safe thanks to a single `Lock`
-"""
 from __future__ import annotations
 
 import threading
@@ -33,7 +26,63 @@ _db: Dict[str, Dashboard] = {
         historyText="",
         people=[],
         idleThreshold=60,
-    )
+    ),
+    # New Dashboards for segmented categories
+    "fma": Dashboard(
+        title="FMA",
+        status="good",
+        kpis=[
+            Kpi(label="FMA Belt filling level", value=0, unit="packages"),
+            Kpi(label="FMA Error Rate", value=0, unit="%"),
+        ],
+        historyText="",
+        people=[],
+        idleThreshold=60,
+    ),
+    "monopicking": Dashboard(
+        title="MonoPicking",
+        status="good",
+        kpis=[
+            Kpi(label="Mono Picking Speed", value=0, unit="items/sec"),
+            Kpi(label="Mono Picking Efficiency", value=0, unit="%"),
+        ],
+        historyText="",
+        people=[],
+        idleThreshold=60,
+    ),
+    "inbound_and_bulk": Dashboard(
+        title="InboundAndBulk",
+        status="good",
+        kpis=[
+            Kpi(label="Inbound Process Time", value=0, unit="seconds"),
+            Kpi(label="Bulk Processing Rate", value=0, unit="items/sec"),
+        ],
+        historyText="",
+        people=[],
+        idleThreshold=60,
+    ),
+    "returns": Dashboard(
+        title="Returns",
+        status="good",
+        kpis=[
+            Kpi(label="Returns Process Time", value=0, unit="seconds"),
+            Kpi(label="Returns Rate", value=0, unit="%"),
+        ],
+        historyText="",
+        people=[],
+        idleThreshold=60,
+    ),
+    "errorlanes": Dashboard(
+        title="Error Lanes",
+        status="good",
+        kpis=[
+            Kpi(label="Error Action Count", value=0, unit="actions"),
+            Kpi(label="Error Action Duration", value=0, unit="seconds"),
+        ],
+        historyText="",
+        people=[],
+        idleThreshold=60,
+    ),
 }
 
 # ── Synchronisation primitives ──────────────────────────────────────────────
@@ -48,15 +97,20 @@ def _tick_once() -> None:
     Safe to call from multiple threads, but we only call it from the
     background ticker held by `_tick_lock`.
     """
-    now = datetime.now(timezone.utc)
-    db  = _db["default"]
+    now = datetime.now(timezone.utc)  # Make sure `now` is aware with UTC timezone
+
+    db = get_db()["default"]
 
     for p in db.people:
-        # 1. idleSeconds -----------------------------------------------------
         if p.last_seen:
+            # Ensure p.last_seen is aware by converting it to the same timezone as `now`
+            if p.last_seen.tzinfo is None:
+                # Convert naive to aware using UTC timezone
+                p.last_seen = p.last_seen.replace(tzinfo=timezone.utc)
+
             p.idleSeconds = int((now - p.last_seen).total_seconds())
         else:
-            p.idleSeconds += IDLE_TICK_FALLBACK
+            p.idleSeconds += IDLE_TICK_FALLBACK  # Use fallback if `last_seen` is None
 
         # 2. speed decay -----------------------------------------------------
         if p.idleSeconds and p.speed:
@@ -65,7 +119,6 @@ def _tick_once() -> None:
     # House-keeping: keep only the latest N operators
     db.people.sort(key=lambda person: person.last_seen or now, reverse=True)
     db.people[:] = db.people[:MAX_PEOPLE]
-
 
 def _ticker_loop() -> None:
     """
@@ -97,9 +150,6 @@ def get_db() -> Dict[str, Dashboard]:
     takes care of it once per second, regardless of how often (or seldom)
     you call `get_db()`.
     """
-    # You *could* grab the lock here if you need strong consistency for
-    # reads, but in practice it isn't necessary for simple dashboards:
-    # with _tick_lock:
     return _db
 
 
