@@ -6,25 +6,30 @@ def get_job_type(comment: str) -> str:
     """
     # Updated mapping between comments and job categories
     COMMENT_TO_CATEGORY_MAPPING: Dict[str, str] = {
-        'Truck moves': 'FMA',
+        'Truck moves': 'InboundAndBulk',
         'AMR Inbound': 'InboundAndBulk',
         'Preparation despatch packaging': 'MonoPicking',
-        'Quality > Available stock': 'ErrorLanes',
+        'Quality > Available stock': 'ErrorLanes', #VoorraadTasks - niet echt error
         'Receipt full pallets': 'InboundAndBulk',
+        '601': {'category': 'Item/Quantity', 'comment': 'Receipt'}, #InboundAndBulk
         'Receipt': 'InboundAndBulk',
         'B2B try‑out and BTQ picking tasks': 'MonoPicking',
         'Multi‑SKU & marketplace try‑out tasks': 'MonoPicking',
-        'B2B manual & label tasks': 'MonoPicking',
-        'Replenishment tasks (Geek+, AMR REA/EPT) and mono collection': 'MonoPicking',
-        'Mono flow despatch': 'MonoPicking',
+        'B2B manual & label tasks': 'MonoPicking', # packing
+        'Replenishment tasks (Geek+, AMR REA/EPT) and mono collection': 'MonoPicking', #Replenishment
+        '700': {'category': 'Real-time', 'comment': 'Inventory > C zone'},#VoorraadTasks
+        '701': {'category': 'Real-time', 'comment': 'Inventory > Bulk'},#VoorraadTasks
+        '702': {'category': 'Real-time', 'comment': 'Inventory > Audit'},#VoorraadTasks
+        'Mono flow despatch': 'MonoPicking',#packing - machine - misschien Sorting?
         'Put Away Returns': 'Returns',
         'Return MOVE': 'Returns',
         'Advent Despatch Packing': 'MonoPicking',
         'GEEK → PACK (packing Geek orders)': 'MonoPicking',
-        'Perform actions on stock': 'ErrorLanes',
+        'G71': {'category': 'Real-time', 'comment': 'Inventory > A zone'},#VoorraadTask
+        'Perform actions on stock': 'ErrorLanes', #VoorraadTasks - resulteerd uit error
         'New item registration': 'InboundAndBulk',
-        'Replenishment tasks (e.g., Repl REA/OPT/EPT) and mono collection': 'MonoPicking',
-        'Replenishment (decons) and deco picking tasks': 'MonoPicking',
+        'Replenishment tasks (e.g., Repl REA/OPT/EPT) and mono collection': 'MonoPicking', #Replenishment
+        'Replenishment (decons) and deco picking tasks': 'MonoPicking', #Replenishment
         'Picking tasks: single/multi SKU, retail, B2B and BTQ': 'MonoPicking',
         'Return receipts': 'Returns'
     }

@@ -56,6 +56,7 @@ async def handle_pubsub_push(pubsub_msg: PubSubMessage):
     }
 
     # 4) Call the appropriate metric extraction function based on job type
+    print(job_type)
     extractor_function = job_type_to_extractor.get(job_type)
 
     if not extractor_function:

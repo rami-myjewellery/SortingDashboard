@@ -129,6 +129,7 @@ def get_returns():
 def get_error_lanes():
     # Use the live dashboard from the in-memory DB for "ErrorLanes"
     return get_db()["errorlanes"]
+
 @router.get("/Sorting", response_model=Dashboard)
 def get_sorting():
     # Use the live dashboard from the in-memory DB

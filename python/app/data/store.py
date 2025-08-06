@@ -51,7 +51,7 @@ _db: Dict[str, Dashboard] = {
         idleThreshold=60,
     ),
     "inbound_and_bulk": Dashboard(
-        title="InboundAndBulk",
+        title="Inbound And Bulk",
         status="good",
         kpis=[
             Kpi(label="Inbound Process Time", value=0, unit="seconds"),
@@ -92,33 +92,22 @@ _shutdown_event = threading.Event()     # so we can cleanly exit if needed
 
 # ── Background ticker ───────────────────────────────────────────────────────
 def _tick_once() -> None:
-    """
-    Apply **one second** worth of decay to every person.
-    Safe to call from multiple threads, but we only call it from the
-    background ticker held by `_tick_lock`.
-    """
-    now = datetime.now(timezone.utc)  # Make sure `now` is aware with UTC timezone
+    now = datetime.now(timezone.utc)
 
-    db = get_db()["default"]
+    for db in _db.values():  # Loop over all dashboards
+        for p in db.people:
+            if p.last_seen:
+                if p.last_seen.tzinfo is None:
+                    p.last_seen = p.last_seen.replace(tzinfo=timezone.utc)
+                p.idleSeconds = int((now - p.last_seen).total_seconds())
+            else:
+                p.idleSeconds += IDLE_TICK_FALLBACK
 
-    for p in db.people:
-        if p.last_seen:
-            # Ensure p.last_seen is aware by converting it to the same timezone as `now`
-            if p.last_seen.tzinfo is None:
-                # Convert naive to aware using UTC timezone
-                p.last_seen = p.last_seen.replace(tzinfo=timezone.utc)
+            if p.idleSeconds and p.speed:
+                p.speed = max(0, int(p.speed * DECAY_RATE))
 
-            p.idleSeconds = int((now - p.last_seen).total_seconds())
-        else:
-            p.idleSeconds += IDLE_TICK_FALLBACK  # Use fallback if `last_seen` is None
-
-        # 2. speed decay -----------------------------------------------------
-        if p.idleSeconds and p.speed:
-            p.speed = max(0, int(p.speed * DECAY_RATE))
-
-    # House-keeping: keep only the latest N operators
-    db.people.sort(key=lambda person: person.last_seen or now, reverse=True)
-    db.people[:] = db.people[:MAX_PEOPLE]
+        db.people.sort(key=lambda person: person.last_seen or now, reverse=True)
+        db.people[:] = db.people[:MAX_PEOPLE]
 
 def _ticker_loop() -> None:
     """
