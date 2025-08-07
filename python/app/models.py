@@ -2,7 +2,7 @@ from collections import deque
 from datetime import datetime
 
 from pydantic import BaseModel, Field
-from typing import List, Literal, Deque
+from typing import List, Literal, Deque, Optional, Dict
 
 MAX_APM = 100                    # hard cap for dashboard display
 
@@ -31,3 +31,4 @@ class Dashboard(BaseModel):
     historyText: str
     people: List[Person]
     idleThreshold: int = 60
+    kpi_state: Optional[Dict] = None

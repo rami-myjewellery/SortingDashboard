@@ -32,8 +32,8 @@ _db: Dict[str, Dashboard] = {
         title="FMA",
         status="good",
         kpis=[
-            Kpi(label="FMA Belt filling level", value=0, unit="packages"),
-            Kpi(label="FMA Error Rate", value=0, unit="%"),
+            Kpi(label="per hour", value=0, unit="amount"),
+            Kpi(label="today", value=0, unit="amount"),
         ],
         historyText="",
         people=[],
@@ -43,8 +43,8 @@ _db: Dict[str, Dashboard] = {
         title="MonoPicking",
         status="good",
         kpis=[
-            Kpi(label="Mono Picking Speed", value=0, unit="items/sec"),
-            Kpi(label="Mono Picking Efficiency", value=0, unit="%"),
+            Kpi(label="per hour", value=0, unit="amount"),
+            Kpi(label="today", value=0, unit="amount"),
         ],
         historyText="",
         people=[],
@@ -54,8 +54,8 @@ _db: Dict[str, Dashboard] = {
         title="Inbound And Bulk",
         status="good",
         kpis=[
-            Kpi(label="Inbound Process Time", value=0, unit="seconds"),
-            Kpi(label="Bulk Processing Rate", value=0, unit="items/sec"),
+            Kpi(label="per hour", value=0, unit="amount"),
+            Kpi(label="today", value=0, unit="amount"),
         ],
         historyText="",
         people=[],
@@ -65,8 +65,8 @@ _db: Dict[str, Dashboard] = {
         title="Returns",
         status="good",
         kpis=[
-            Kpi(label="Returns Process Time", value=0, unit="seconds"),
-            Kpi(label="Returns Rate", value=0, unit="%"),
+            Kpi(label="per hour", value=0, unit="amount"),
+            Kpi(label="today", value=0, unit="amount"),
         ],
         historyText="",
         people=[],
@@ -76,12 +76,13 @@ _db: Dict[str, Dashboard] = {
         title="Error Lanes",
         status="good",
         kpis=[
-            Kpi(label="Error Action Count", value=0, unit="actions"),
-            Kpi(label="Error Action Duration", value=0, unit="seconds"),
+            Kpi(label="per hour", value=0, unit="amount"),
+            Kpi(label="today", value=0, unit="amount"),
         ],
         historyText="",
         people=[],
         idleThreshold=60,
+
     ),
 }
 
