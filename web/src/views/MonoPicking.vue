@@ -4,9 +4,9 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 import axios   from 'axios'
 import Dashboard from '@/components/Dashboard.vue'   // keep ✅
 import { useRoute } from 'vue-router'
-// const API = 'https://sorting-dashboard-api-208732756826.europe-west4.run.app/dashboard/MonoPicking'
+const API = 'https://sorting-dashboard-api-208732756826.europe-west4.run.app/dashboard/MonoPicking'
 
-const API = '/dashboard/MonoPicking'
+// const API = '/dashboard/MonoPicking'
 
 const data = ref(null)
 const route = useRoute()
