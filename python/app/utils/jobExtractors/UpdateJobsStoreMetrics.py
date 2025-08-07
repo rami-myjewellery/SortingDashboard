@@ -43,8 +43,9 @@ def calc_kpi_based_on_event(job_data: Dict[str, Any], dashboard: Any) -> None:
     per_hour = state["total"] / hours_elapsed
 
     # Assign to KPIs
-    dashboard.kpis[0].value = state["total"]
-    dashboard.kpis[1].value = round(per_hour, 0)
+    dashboard.kpis[0].value = round(per_hour, 0)
+    dashboard.kpis[1].value = state["total"]
+
 
 
 # ── Main Update Function ─────────────────────────────────────────────────────
