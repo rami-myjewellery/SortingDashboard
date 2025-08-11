@@ -4,33 +4,50 @@ import { computed } from 'vue'
 const props = defineProps({
   person:        { type: Object, required: true },
   action:        { type: Object, required: true },
-  idleThreshold: { type: Number, default: 40 }
+  idleThreshold: { type: Number, default: 40 } // seconds
 })
 
+// safe access
+const idleSeconds = computed(() =>
+    Math.max(0, Number(props.person?.idleSeconds ?? 0))
+)
+
+// simple class based on inactivity only
 const perfClass = computed(() => {
-  if (props.person.idleSeconds > props.idleThreshold) return 'idle'
-  if (props.person.speed >= 75) return 'good'
-  if (props.person.speed >= 50) return 'warn'
-  return 'bad'
+  return idleSeconds.value > props.idleThreshold ? 'idle' : 'good'
+})
+
+// format like "1h 2m 3s", "12m 4s", or "15s"
+const idleDisplay = computed(() => {
+  let s = idleSeconds.value
+  const h = Math.floor(s / 3600); s %= 3600
+  const m = Math.floor(s / 60);   s = Math.floor(s % 60)
+  const parts = []
+  if (h) parts.push(`${h}h`)
+  if (m) parts.push(`${m}m`)
+  parts.push(`${s}s`)
+  return parts.join(' ')
 })
 </script>
 
 <template>
   <div class="person-bar" :class="perfClass">
     <span class="name">{{ person.name }}</span>
-    <div style="font-size: medium; text-align: right" class="name">{{ person.action }}</div>
+    <div class="name" style="font-size: medium; text-align: right">
+      {{ person.action }}
+    </div>
 
     <div class="details">
-      <div class="clock" :title="`${person.idleSeconds}s`"></div>
-      <div
-          class="dial"
-          :class="perfClass"
-          :style="{ '--value': person.speed }"
-      >
-        <span>{{ person.speed }}%</span>
+      <div class="clock" :title="`${idleSeconds}s inactive`"></div>
+      <div class="idle-badge">
+        Inactive: <strong>{{ idleDisplay }}</strong>
       </div>
     </div>
   </div>
 </template>
 
-<!-- GEEN scoped styles nodig: alles staat globaal -->
+<!-- styles are global in your setup; example helpers if you want:
+.idle-badge { padding: 2px 8px; border-radius: 9999px; font-variant-numeric: tabular-nums; }
+.person-bar.idle .idle-badge { background: #fff2f2; }
+.person-bar.good .idle-badge { background: #f4fff2; }
+-->

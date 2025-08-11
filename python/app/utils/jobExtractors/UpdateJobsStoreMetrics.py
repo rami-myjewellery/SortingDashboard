@@ -94,7 +94,12 @@ async def update_jobs_store_metric(job_data: Dict[str, Any]) -> Dict[str, Any]:
         p.idleSeconds = int((datetime.now(timezone.utc) - p.last_seen).total_seconds())
 
     # 7) Trim people list
-    db.people.sort(key=lambda p: p.last_seen or now, reverse=True)
+    db.people.sort(
+        key=lambda p: (
+            -int(getattr(p, "idleSeconds", 0)),  # primary: idle seconds (desc)
+            (p.last_seen or datetime.min.replace(tzinfo=timezone.utc)),  # tie-breaker: older last_seen first
+        )
+    )
     db.people = db.people[:5]
 
     # 8) KPI update
