@@ -4,10 +4,10 @@ import Sorting from '../views/Sorting.vue'
 import GeekPicking from '../views/GeekPicking.vue'
 import GeekInbound from '../views/GeekInbound.vue'
 import ErrorLanes from '../views/ErrorLanes.vue'
-import FMA from '../views/FMA.vue'
-import MonoPicking from '../views/MonoPicking.vue'
 import InboundAndBulk from '../views/InboundAndBulk.vue'
 import Returns from '../views/Returns.vue'
+import Picking from "@/views/Picking.vue";
+import Replenishment from "@/views/Replenishment.vue";
 
 const routes = [
     { path: '/GeekPicking',            component: GeekPicking },
@@ -19,14 +19,14 @@ const routes = [
     { path: '/ErrorLanes',             component: ErrorLanes },
     { path: '/ErrorLanes/userKPI',     component: ErrorLanes },
 
-    { path: '/FMA',                    component: FMA },
-    { path: '/FMA/userKPI',            component: FMA },
+    { path: '/Replenishment',                    component: Replenishment },
+    { path: '/Replenishment/userKPI',            component: Replenishment },
 
     { path: '/Sorting',                component: Sorting },
     { path: '/Sorting/userKPI',        component: Sorting },
 
-    { path: '/MonoPicking',            component: MonoPicking },
-    { path: '/MonoPicking/userKPI',    component: MonoPicking },
+    { path: '/Picking',            component: Picking },
+    { path: '/Picking/userKPI',    component: Picking },
 
     { path: '/InboundAndBulk',         component: InboundAndBulk },
     { path: '/InboundAndBulk/userKPI', component: InboundAndBulk },

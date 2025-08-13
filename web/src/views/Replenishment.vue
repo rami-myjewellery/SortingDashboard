@@ -4,9 +4,9 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 import axios   from 'axios'
 import Dashboard from '@/components/Dashboard.vue'   // keep ✅
 import { useRoute } from 'vue-router'
-const API = 'https://sorting-dashboard-api-208732756826.europe-west4.run.app/dashboard/MonoPicking'
-
-// const API = '/dashboard/MonoPicking'
+const API = 'https://sorting-dashboard-api-208732756826.europe-west4.run.app/dashboard/Replenishment'
+//
+// const API = 'http://127.0.0.1:5001/dashboard/FMA'
 
 const data = ref(null)
 const route = useRoute()
@@ -16,7 +16,6 @@ const showPeople = route.query.bool === 'true'
 const fetchData = async () => {
   try {
     const res = await axios.get(API)
-    console.log('API response:', res.data)
     data.value = res.data
     setBodyColor(data.value.status)
   } catch (err) {
