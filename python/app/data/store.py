@@ -28,8 +28,8 @@ _db: Dict[str, Dashboard] = {
         idleThreshold=60,
     ),
     # New Dashboards for segmented categories
-    "fma": Dashboard(
-        title="FMA",
+    "replenishment": Dashboard(
+        title="Replenishment",
         status="good",
         kpis=[
             Kpi(label="per hour", value=0, unit="amount"),
@@ -39,8 +39,8 @@ _db: Dict[str, Dashboard] = {
         people=[],
         idleThreshold=60,
     ),
-    "monopicking": Dashboard(
-        title="MonoPicking",
+    "pick": Dashboard(
+        title="Picking",
         status="good",
         kpis=[
             Kpi(label="per hour", value=0, unit="amount"),
@@ -50,8 +50,8 @@ _db: Dict[str, Dashboard] = {
         people=[],
         idleThreshold=60,
     ),
-    "inbound_and_bulk": Dashboard(
-        title="Inbound And Bulk",
+    "inbound": Dashboard(
+        title="Inbound",
         status="good",
         kpis=[
             Kpi(label="per hour", value=0, unit="amount"),
@@ -72,7 +72,7 @@ _db: Dict[str, Dashboard] = {
         people=[],
         idleThreshold=60,
     ),
-    "errorlanes": Dashboard(
+    "error lane": Dashboard(
         title="Error Lanes",
         status="good",
         kpis=[

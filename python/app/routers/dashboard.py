@@ -105,20 +105,20 @@ def get_geek_inbound():
     dashboard.title = patch["title"]
     dashboard.kpis = patch["kpis"]
     return dashboard
-@router.get("/FMA", response_model=Dashboard)
-def get_fma():
+@router.get("/Replenishment", response_model=Dashboard)
+def get_replenishment():
     # Use the live dashboard from the in-memory DB for "FMA"
-    return get_db()["fma"]
+    return get_db()["replenishment"]
 
-@router.get("/MonoPicking", response_model=Dashboard)
+@router.get("/Picking", response_model=Dashboard)
 def get_mono_picking():
     # Use the live dashboard from the in-memory DB for "MonoPicking"
-    return get_db()["monopicking"]
+    return get_db()["pick"]
 
 @router.get("/InboundAndBulk", response_model=Dashboard)
 def get_inbound_bulk():
     # Use the live dashboard from the in-memory DB for "InboundAndBulk"
-    return get_db()["inbound_and_bulk"]
+    return get_db()["inbound"]
 
 @router.get("/Returns", response_model=Dashboard)
 def get_returns():
@@ -128,7 +128,7 @@ def get_returns():
 @router.get("/ErrorLanes", response_model=Dashboard)
 def get_error_lanes():
     # Use the live dashboard from the in-memory DB for "ErrorLanes"
-    return get_db()["errorlanes"]
+    return get_db()["error lane"]
 
 @router.get("/Sorting", response_model=Dashboard)
 def get_sorting():

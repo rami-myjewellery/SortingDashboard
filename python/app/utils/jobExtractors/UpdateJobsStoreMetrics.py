@@ -4,7 +4,6 @@ from typing import Dict, Any
 
 from app.utils.MainUtils import get_or_create_person
 from app.data.store import get_db
-from app.utils.jobExtractors.GetJobType import get_job_type
 from datetime import timezone
 # ── Parameters ───────────────────────────────────────────────────────────────
 WINDOW = timedelta(seconds=60)   # size of the rolling window
@@ -54,7 +53,7 @@ async def update_jobs_store_metric(job_data: Dict[str, Any]) -> Dict[str, Any]:
     job_id = job_data.get("HEADER_ID")
     comment = job_data.get("comment", "").strip()
     operator_name = job_data.get("EMPLOYEE_CODE", "").strip() or "Unknown"
-    job_type = get_job_type(comment)
+    job_type = job_data.get("HIGH_OVER_PROCESS", "").strip()   # Change here
     now = datetime.now(timezone.utc)
 
     job_data["job_type"] = job_type
