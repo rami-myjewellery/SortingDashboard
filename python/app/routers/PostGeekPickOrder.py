@@ -25,6 +25,7 @@ from app.utils.jobExtractors.UpdateJobsStoreMetrics import (
     update_jobs_store_metric,
 )
 
+
 router = APIRouter()
 @router.post("/pubsub/geek-pickorder")
 async def handle_geek_pickorder_push(request: Request):
