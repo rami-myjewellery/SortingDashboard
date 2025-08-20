@@ -12,14 +12,22 @@ MAX_APM = 100                    # full-bar value
 # ── KPI Update Function ──────────────────────────────────────────────────────
 def calc_kpi_based_on_event(job_data: Dict[str, Any], dashboard: Any) -> None:
     """
-    Increments dashboard KPIs by 1 per job event:
+    Increments dashboard KPIs by the quantity in job_data (default 1 if missing):
     - total items processed today
     - items processed per hour
     """
     now = datetime.now(timezone.utc)
 
+    # Extract quantity from job_data
+    inner = job_data.get("RAW_GEEK", {}).get("data", {})
+    ipg_list = inner.get("ipg_list", [])
+    if isinstance(ipg_list, list) and ipg_list:
+        qty = sum(int(item.get("base_lv_quantity", 1)) for item in ipg_list)
+    else:
+        qty = 1  # fallback if ipg_list missing/empty
+
     # Initialize tracking if not set
-    if dashboard.kpi_state is None:
+    if getattr(dashboard, "kpi_state", None) is None:
         dashboard.kpi_state = {
             "date": now.date(),
             "total": 0,
@@ -34,14 +42,14 @@ def calc_kpi_based_on_event(job_data: Dict[str, Any], dashboard: Any) -> None:
         state["total"] = 0
         state["first_event_time"] = now
 
-    # +1 per event
-    state["total"] += 1
+    # Increment by quantity (instead of +1)
+    state["total"] += qty
 
     # Calculate items/hr
     hours_elapsed = max((now - state["first_event_time"]).total_seconds() / 3600, 1/60)
     per_hour = state["total"] / hours_elapsed
 
-    # Assign to KPIs
+    # Assign to KPIs (assume [0] = per hour, [1] = today)
     dashboard.kpis[0].value = round(per_hour, 0)
     dashboard.kpis[1].value = state["total"]
 

@@ -84,6 +84,28 @@ _db: Dict[str, Dashboard] = {
         idleThreshold=60,
 
     ),
+    "geekinbound": Dashboard(
+        title="Geek Putaway",
+        status="good",
+        kpis=[
+            Kpi(label="per hour", value=0, unit="amount"),
+            Kpi(label="today", value=0, unit="amount"),
+        ],
+        historyText="",
+        people=[],
+        idleThreshold=60,
+    ),
+    "geekpicking": Dashboard(
+        title="Geek Picking",
+        status="good",
+        kpis=[
+            Kpi(label="per hour", value=0, unit="amount"),
+            Kpi(label="today", value=0, unit="amount"),
+        ],
+        historyText="",
+        people=[],
+        idleThreshold=60,
+    ),
 }
 
 # ── Synchronisation primitives ──────────────────────────────────────────────

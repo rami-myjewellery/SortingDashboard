@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 
 from app.routers import dashboard, sortingBeltAnalyser, \
-    PostJobsActionToDashboard  # import other routers as you add them
+    PostJobsActionToDashboard, PostGeekPutAway, PostGeekPickOrder  # import other routers as you add them
 
 
 def create_app() -> FastAPI:
@@ -28,7 +28,8 @@ def create_app() -> FastAPI:
     app.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
     app.include_router(sortingBeltAnalyser.router, prefix="/analysis", tags=["analyse-belt"])
     app.include_router(PostJobsActionToDashboard.router, prefix="/actions", tags=["sorting-actions"])
-
+    app.include_router(PostGeekPutAway.router, prefix="/actions", tags=["put-away"])
+    app.include_router(PostGeekPickOrder.router, prefix="/actions", tags=["pick-order"])
     return app
 
 

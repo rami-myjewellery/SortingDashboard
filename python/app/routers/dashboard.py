@@ -92,19 +92,12 @@ PATCHES: Dict[str, Dict] = {
 
 @router.get("/GeekPicking", response_model=Dashboard)
 def get_geek_picking():
-    dashboard = deepcopy(_BASE)
-    patch = PATCHES["GeekPicking"]
-    dashboard.title = patch["title"]
-    dashboard.kpis = patch["kpis"]
-    return dashboard
+    return get_db()["geekpicking"]
 
 @router.get("/GeekInbound", response_model=Dashboard)
 def get_geek_inbound():
-    dashboard = deepcopy(_BASE)
-    patch = PATCHES["GeekInbound"]
-    dashboard.title = patch["title"]
-    dashboard.kpis = patch["kpis"]
-    return dashboard
+    return get_db()["geekinbound"]
+
 @router.get("/Replenishment", response_model=Dashboard)
 def get_replenishment():
     # Use the live dashboard from the in-memory DB for "FMA"
