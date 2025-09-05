@@ -8,10 +8,12 @@ from typing import Dict
 from app.models import Dashboard, Kpi
 
 # ── Tuning knobs ────────────────────────────────────────────────────────────
+# ── Tuning knobs ────────────────────────────────────────────────────────────
 DECAY_RATE           = 0.99     # 1 % speed drop **per second of idleness**
 IDLE_TICK_FALLBACK   = 1        # seconds to add if last_seen is None
 MAX_PEOPLE           = 5        # keep only the N most-recent operators
 TICK_INTERVAL        = 1.0      # seconds between background ticks
+IDLE_REMOVAL_SECONDS = 30 * 60  # NEW: remove from list if idle ≥ 30 minutes
 
 # ── The “database” ──────────────────────────────────────────────────────────
 _db: Dict[str, Dashboard] = {
@@ -118,9 +120,11 @@ def _tick_once() -> None:
     now = datetime.now(timezone.utc)
 
     for db in _db.values():  # Loop over all dashboards
+        # First pass: update idleSeconds / speed
         for p in db.people:
             if p.last_seen:
                 if p.last_seen.tzinfo is None:
+                    # Treat naive timestamps as UTC to avoid offset errors
                     p.last_seen = p.last_seen.replace(tzinfo=timezone.utc)
                 p.idleSeconds = int((now - p.last_seen).total_seconds())
             else:
@@ -129,6 +133,10 @@ def _tick_once() -> None:
             if p.idleSeconds and p.speed:
                 p.speed = max(0, int(p.speed * DECAY_RATE))
 
+        # NEW: prune people idle for too long (≥ 30 minutes)
+        db.people[:] = [p for p in db.people if (p.idleSeconds or 0) < IDLE_REMOVAL_SECONDS]
+
+        # Existing behavior: keep the most recently seen, then cap list length
         db.people.sort(key=lambda person: person.last_seen or now, reverse=True)
         db.people[:] = db.people[:MAX_PEOPLE]
 
