@@ -6,7 +6,7 @@ async def extract_fma_metrics(job_data: Dict[str, Any]) -> Dict[str, Any]:
         "comment": job_data.get("comment", ""),  # Extract the comment
         "category": job_data.get("category", ""),  # Extract the category
         "employee_code": job_data.get("EMPLOYEE_CODE", ""),  # Extract employee code
-        "total_cartons": job_data.get("CARTON_COUNT", 0),  # Total cartons processed
+        "total_cartons": job_data.get("LINE_COUNT", 0),  # Total cartons processed
         "total_handling_units": job_data.get("HANDLING_UNIT_COUNT", 0),  # Number of handling units
         "net_weight": job_data.get("NET_WEIGHT_DURATION", 0),  # Total net weight
         "gross_weight": job_data.get("GROSS_WEIGHT_DURATION", 0),  # Total gross weight
@@ -50,7 +50,7 @@ async def extract_inbound_and_bulk_metrics(job_data: Dict[str, Any]) -> Dict[str
         "comment": job_data.get("comment", ""),  # Extract the comment
         "category": job_data.get("category", ""),  # Extract the category
         "employee_code": job_data.get("EMPLOYEE_CODE", ""),  # Extract employee code
-        "total_units_processed": job_data.get("HANDLING_UNIT_COUNT", 0),  # Units processed
+        "total_units_processed": job_data.get("LINE_COUNT", 0),  # Units processed
         "inbound_duration": job_data.get("DURATION_SECONDS", 0),  # Time spent in inbound processing
         "bulk_processing_time": job_data.get("QTY_LEVEL_1_DURATION", 0),  # Time for bulk processing
         "volume": job_data.get("VOLUME_DURATION", 0),  # Volume of processed items

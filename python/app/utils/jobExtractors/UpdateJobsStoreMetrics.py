@@ -54,17 +54,16 @@ def calc_kpi_based_on_event(job_data: Dict[str, Any], dashboard: Any) -> None:
     dashboard.kpis[1].value = state["total"]
 
 
-
 # ── Main Update Function ─────────────────────────────────────────────────────
 async def update_jobs_store_metric(job_data: Dict[str, Any]) -> Dict[str, Any]:
     # Extract required information
     job_id = job_data.get("HEADER_ID")
-    comment = job_data.get("comment", "").strip()
-    operator_name = job_data.get("EMPLOYEE_CODE", "").strip() or "Unknown"
-    job_type = job_data.get("HIGH_OVER_PROCESS", "").strip()   # Change here
+    comment = (job_data.get("comment") or "").strip()
+    operator_name = (job_data.get("EMPLOYEE_CODE") or "").strip() or "Unknown"
+    job_type = (job_data.get("HIGH_OVER_PROCESS") or "").strip()
     now = datetime.now(timezone.utc)
 
-    job_data["job_type"] = job_type
+    job_data["job_type"] = job_type  # keep for downstream KPI calculation, etc.
 
     # 1) Get dashboard
     db = get_db().get(job_type.lower())
@@ -86,9 +85,27 @@ async def update_jobs_store_metric(job_data: Dict[str, Any]) -> Dict[str, Any]:
     while job_times and job_times[0] < cutoff:
         job_times.popleft()
 
+    # Helper: coerce a value to a non-negative integer, with default
+    def _coerce_lines(val, default=1) -> int:
+        # Prefer LINE_COUNT, then amount_of_lines; keep default=1 to mimic old +1 behavior when missing
+        try:
+            if val is None:
+                return default
+            # allow strings like "7"
+            num = int(float(val))
+            return max(0, num)  # no negative increments
+        except Exception:
+            return default
+
+    # Determine how many lines to add
+    amount_of_lines = _coerce_lines(
+        job_data.get("LINE_COUNT", None) if "LINE_COUNT" in job_data else job_data.get("amount_of_lines", None),
+        default=1
+    )
+
     # 5) Activity & metadata
     person.speed = MAX_APM
-    person.jobs += 1
+    person.jobs = (getattr(person, "jobs", 0) or 0) + amount_of_lines  # ✅ add number of lines
     person.last_seen = now
     person.idleSeconds = 0
     person.category = job_type
@@ -96,7 +113,7 @@ async def update_jobs_store_metric(job_data: Dict[str, Any]) -> Dict[str, Any]:
 
     # 6) Update idleSeconds for others
     for p in db.people:
-        if p is person or not p.last_seen:
+        if p is person or not getattr(p, "last_seen", None):
             continue
         p.idleSeconds = int((datetime.now(timezone.utc) - p.last_seen).total_seconds())
 
@@ -104,7 +121,7 @@ async def update_jobs_store_metric(job_data: Dict[str, Any]) -> Dict[str, Any]:
     db.people.sort(
         key=lambda p: (
             -int(getattr(p, "idleSeconds", 0)),  # primary: idle seconds (desc)
-            (p.last_seen or datetime.min.replace(tzinfo=timezone.utc)),  # tie-breaker: older last_seen first
+            (getattr(p, "last_seen", None) or datetime.min.replace(tzinfo=timezone.utc)),  # tie-breaker
         )
     )
     db.people = db.people[:5]
@@ -112,6 +129,6 @@ async def update_jobs_store_metric(job_data: Dict[str, Any]) -> Dict[str, Any]:
     # 8) KPI update
     calc_kpi_based_on_event(job_data, db)
 
-    print(f"✅ Dashboard updated: {operator_name} ran '{job_type}' (#{job_id})")
+    print(f"✅ Dashboard updated: {operator_name} ran '{job_type}' (#{job_id}) — +{amount_of_lines} lines")
 
     return {"status": "success", "job_id": job_id}
