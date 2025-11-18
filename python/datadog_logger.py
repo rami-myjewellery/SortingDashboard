@@ -6,12 +6,20 @@ from __future__ import annotations
 import base64
 import json
 import logging
+import sys
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Any, Dict, Optional
 
 DATADOG_LOGGER_NAME = "datadog"
+_logger = logging.getLogger(DATADOG_LOGGER_NAME)
+if not _logger.handlers:
+    handler = logging.StreamHandler(stream=sys.stdout)
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    _logger.addHandler(handler)
+_logger.setLevel(logging.INFO)
+_logger.propagate = False
 
 
 def _default_serializer(value: Any) -> Any:
@@ -63,7 +71,6 @@ class DatadogLog:
         serialized = json.dumps(payload, default=_default_serializer, separators=(",", ":"))
         logger = logging.getLogger(DATADOG_LOGGER_NAME)
         logger.info(serialized)
-        print(serialized, flush=True)
         return serialized
 
 
