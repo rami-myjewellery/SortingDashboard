@@ -91,10 +91,22 @@ async def analyze_image(
     file: UploadFile =  (...),
 ):
     # 1️⃣ crop the 4 belts
+    log_datadog_event(
+        status="info",
+        message="Received belt analysis image",
+        event_type="sorting_belt.analyze_image",
+        function_name="analyze_image",
+    )
     try:
         full_frame = await file.read()
         crops_bin = crop_belts(full_frame)              # {'red': b'...', ...}
     except Exception as e:
+        log_datadog_event(
+            status="error",
+            message=f"Failed to process belt image: {e}",
+            event_type="sorting_belt.analyze_image",
+            function_name="analyze_image",
+        )
         raise HTTPException(400, str(e))
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     for segment_id, img_bytes in crops_bin.items():

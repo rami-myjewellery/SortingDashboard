@@ -114,10 +114,24 @@ async def _build_dashboard_response(store_key: str) -> Dashboard:
     """
     db = get_db()
     if store_key not in db:
+        log_datadog_event(
+            status="error",
+            message=f"Dashboard '{store_key}' not found",
+            event_type="dashboard.fetch",
+            function_name="_build_dashboard_response",
+            extra={"store_key": store_key},
+        )
         raise HTTPException(status_code=404, detail=f"Dashboard '{store_key}' not found.")
 
     dashboard = deepcopy(db[store_key])
     await _inject_manual_finish_tile(store_key, dashboard)
+    log_datadog_event(
+        status="ok",
+        message=f"Dashboard '{store_key}' served",
+        event_type="dashboard.fetch",
+        function_name="_build_dashboard_response",
+        extra={"store_key": store_key, "kpi_count": len(dashboard.kpis)},
+    )
     return dashboard
 
 
