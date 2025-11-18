@@ -10,7 +10,9 @@ from pydantic import BaseModel, ValidationError
 logger = logging.getLogger(__name__)
 
 
-DEFAULT_MANUAL_FINISH_URL = "https://pick-binding-dashboard-web-208732756826.europe-west4.run.app/manual-finish"
+DEFAULT_MANUAL_FINISH_URL = (
+    "https://pick-binding-dashboard-api-208732756826.europe-west4.run.app/manual-finish"
+)
 CACHE_TTL_SECONDS = 5
 
 
