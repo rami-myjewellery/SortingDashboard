@@ -1,10 +1,15 @@
+import logging
 from copy import deepcopy
-from typing import Dict
+from dataclasses import dataclass
+from typing import Dict, Optional
 
 from fastapi import APIRouter, HTTPException
 
 from app.models import Dashboard, Kpi
 from app.data.store import get_db
+from app.services.manual_finish import get_manual_finish_metrics
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -86,44 +91,92 @@ PATCHES: Dict[str, Dict] = {
     },
 }
 
+# ── Manual finish tile configuration ────────────────────────────────────────
+@dataclass(frozen=True)
+class ManualFinishTileConfig:
+    metric: str
+    label: str
+    unit: str = "jobs"
+
+
+MANUAL_FINISH_TILES: Dict[str, ManualFinishTileConfig] = {
+    # Only Pick & GeekPicking dashboards receive the manual-finish queue tile.
+    "pick": ManualFinishTileConfig(metric="fma", label="Waiting carts (FMA)", unit="carts"),
+    "geekpicking": ManualFinishTileConfig(metric="geek", label="Waiting carts (Geek)", unit="carts"),
+}
+
+
+async def _build_dashboard_response(store_key: str) -> Dashboard:
+    """
+    Create an isolated snapshot of the dashboard, enrich it with manual finish
+    metrics (if configured), and return it to the caller.
+    """
+    db = get_db()
+    if store_key not in db:
+        raise HTTPException(status_code=404, detail=f"Dashboard '{store_key}' not found.")
+
+    dashboard = deepcopy(db[store_key])
+    await _inject_manual_finish_tile(store_key, dashboard)
+    return dashboard
+
+
+async def _inject_manual_finish_tile(store_key: str, dashboard: Dashboard) -> None:
+    config: Optional[ManualFinishTileConfig] = MANUAL_FINISH_TILES.get(store_key)
+    if not config:
+        return
+
+    try:
+        metrics = await get_manual_finish_metrics()
+    except Exception as exc:  # pragma: no cover - defensive logging path
+        # Keep dashboard functional even when the upstream metric is unavailable.
+        logger.warning("manual-finish metrics unavailable for '%s': %s", store_key, exc)
+        return
+
+    value = getattr(metrics, config.metric, None)
+    if value is None:
+        return
+
+    dashboard.kpis.append(Kpi(label=config.label, value=value, unit=config.unit))
+
+
 # ---------------------------------------------------------------------------
 # Endpoints for each category dashboard
 # ---------------------------------------------------------------------------
 
 @router.get("/GeekPicking", response_model=Dashboard)
-def get_geek_picking():
-    return get_db()["geekpicking"]
+async def get_geek_picking():
+    return await _build_dashboard_response("geekpicking")
 
 @router.get("/GeekInbound", response_model=Dashboard)
-def get_geek_inbound():
-    return get_db()["geekinbound"]
+async def get_geek_inbound():
+    return await _build_dashboard_response("geekinbound")
 
 @router.get("/Replenishment", response_model=Dashboard)
-def get_replenishment():
+async def get_replenishment():
     # Use the live dashboard from the in-memory DB for "FMA"
-    return get_db()["replenishment"]
+    return await _build_dashboard_response("replenishment")
 
 @router.get("/Picking", response_model=Dashboard)
-def get_mono_picking():
+async def get_mono_picking():
     # Use the live dashboard from the in-memory DB for "MonoPicking"
-    return get_db()["pick"]
+    return await _build_dashboard_response("pick")
 
 @router.get("/InboundAndBulk", response_model=Dashboard)
-def get_inbound_bulk():
+async def get_inbound_bulk():
     # Use the live dashboard from the in-memory DB for "InboundAndBulk"
-    return get_db()["inbound"]
+    return await _build_dashboard_response("inbound")
 
 @router.get("/Returns", response_model=Dashboard)
-def get_returns():
+async def get_returns():
     # Use the live dashboard from the in-memory DB for "Returns"
-    return get_db()["returns"]
+    return await _build_dashboard_response("returns")
 
 @router.get("/ErrorLanes", response_model=Dashboard)
-def get_error_lanes():
+async def get_error_lanes():
     # Use the live dashboard from the in-memory DB for "ErrorLanes"
-    return get_db()["error lane"]
+    return await _build_dashboard_response("error lane")
 
 @router.get("/Sorting", response_model=Dashboard)
-def get_sorting():
+async def get_sorting():
     # Use the live dashboard from the in-memory DB
-    return get_db()["default"]
+    return await _build_dashboard_response("default")
