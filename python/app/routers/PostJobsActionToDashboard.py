@@ -13,6 +13,7 @@ from app.utils.MainUtils import get_or_create_person
 from app.utils.jobExtractors.JobMetricExtractor import extract_fma_metrics, extract_monopicking_metrics, \
     extract_inbound_and_bulk_metrics, extract_returns_metrics, extract_errorlanes_metrics
 from app.utils.jobExtractors.UpdateJobsStoreMetrics import update_jobs_store_metric
+from datadog_logger import log_datadog_event
 
 router = APIRouter()
 
@@ -33,6 +34,12 @@ async def handle_pubsub_push(pubsub_msg: PubSubMessage):
         decoded_json  = base64.b64decode(data_b64).decode("utf-8")
         job_data: Dict[str, Any] = json.loads(decoded_json)
     except Exception as exc:
+        log_datadog_event(
+            status="error",
+            message=f"Failed to decode Pub/Sub payload: {exc}",
+            event_type="jobs_action.pubsub",
+            function_name="handle_pubsub_push",
+        )
         raise HTTPException(
             status_code=400,
             detail=f"Failed to decode Pub/Sub payload: {exc}",
@@ -59,6 +66,13 @@ async def handle_pubsub_push(pubsub_msg: PubSubMessage):
     extractor_function = job_type_to_extractor.get(job_type)
 
     if not extractor_function:
+        log_datadog_event(
+            status="warning",
+            message=f"Unsupported job type: {job_type}",
+            event_type="jobs_action.pubsub",
+            function_name="handle_pubsub_push",
+            jobs_id=str(job_id) if job_id is not None else None,
+        )
         raise HTTPException(status_code=200, detail=f"Unsupported job type: {job_type}")
 
     job_metrics = await extractor_function(job_data)
@@ -66,5 +80,13 @@ async def handle_pubsub_push(pubsub_msg: PubSubMessage):
     # 6) Update the job metrics in the store (for the correct job type and dashboard)
     update_result = await update_jobs_store_metric(job_data)  # Update the store with job data
 
+    log_datadog_event(
+        status="ok",
+        message=f"Processed job {job_id}",
+        event_type="jobs_action.pubsub",
+        function_name="handle_pubsub_push",
+        jobs_id=str(job_id) if job_id is not None else None,
+        extra={"job_type": job_type, "metrics": job_metrics, "update": update_result},
+    )
     print(f"✅ Job {job_id} processed with metrics: {job_metrics}")
     return {"status": "success", "job_id": job_id}

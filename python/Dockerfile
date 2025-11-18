@@ -18,5 +18,10 @@ WORKDIR /app
 
 COPY --from=deps /usr/local /usr/local
 COPY . /app
+COPY datadog/serverless-init /datadog-init
+RUN chmod +x /datadog-init && \
+    pip install --no-cache-dir --target /dd_tracer/python ddtrace
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+ENV PYTHONPATH="/dd_tracer/python:${PYTHONPATH}"
+
+CMD ["/datadog-init", "/dd_tracer/python/bin/ddtrace-run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]

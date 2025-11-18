@@ -7,6 +7,8 @@ from typing import Optional
 import httpx
 from pydantic import BaseModel, ValidationError
 
+from datadog_logger import log_datadog_event
+
 logger = logging.getLogger(__name__)
 
 
@@ -51,14 +53,48 @@ async def get_manual_finish_metrics(force_refresh: bool = False) -> ManualFinish
         except httpx.HTTPError as exc:
             if _cache:
                 logger.warning("manual-finish fetch failed (%s); serving cached data", exc)
+                log_datadog_event(
+                    status="warning",
+                    message=f"manual-finish fetch failed; served cached data: {exc}",
+                    event_type="manual_finish.fetch",
+                    function_name="get_manual_finish_metrics",
+                    extra={"url": url, "cache_age": CACHE_TTL_SECONDS},
+                )
                 return _cache
+            log_datadog_event(
+                status="error",
+                message=f"manual-finish request failed: {exc}",
+                event_type="manual_finish.fetch",
+                function_name="get_manual_finish_metrics",
+                extra={"url": url},
+            )
             raise RuntimeError(f"manual-finish request failed: {exc}") from exc
 
         try:
             metrics = ManualFinishMetrics.model_validate(response.json())
         except (ValueError, ValidationError) as exc:
+            log_datadog_event(
+                status="error",
+                message=f"manual-finish invalid payload: {exc}",
+                event_type="manual_finish.fetch",
+                function_name="get_manual_finish_metrics",
+                extra={"url": url},
+            )
             raise RuntimeError(f"manual-finish returned invalid payload: {exc}") from exc
 
         _cache = metrics
         _cache_expiration = time.monotonic() + CACHE_TTL_SECONDS
+        log_datadog_event(
+            status="ok",
+            message="manual-finish metrics refreshed",
+            event_type="manual_finish.fetch",
+            function_name="get_manual_finish_metrics",
+            extra={
+                "url": url,
+                "cache_ttl_seconds": CACHE_TTL_SECONDS,
+                "geek": metrics.geek,
+                "fma": metrics.fma,
+                "total": metrics.total,
+            },
+        )
         return metrics

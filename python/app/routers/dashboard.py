@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException
 from app.models import Dashboard, Kpi
 from app.data.store import get_db
 from app.services.manual_finish import get_manual_finish_metrics
+from datadog_logger import log_datadog_event
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +131,13 @@ async def _inject_manual_finish_tile(store_key: str, dashboard: Dashboard) -> No
     except Exception as exc:  # pragma: no cover - defensive logging path
         # Keep dashboard functional even when the upstream metric is unavailable.
         logger.warning("manual-finish metrics unavailable for '%s': %s", store_key, exc)
+        log_datadog_event(
+            status="error",
+            message=f"manual-finish metrics unavailable: {exc}",
+            event_type="manual_finish.tile",
+            function_name="_inject_manual_finish_tile",
+            extra={"store_key": store_key},
+        )
         return
 
     value = getattr(metrics, config.metric, None)
@@ -137,6 +145,13 @@ async def _inject_manual_finish_tile(store_key: str, dashboard: Dashboard) -> No
         return
 
     dashboard.kpis.append(Kpi(label=config.label, value=value, unit=config.unit))
+    log_datadog_event(
+        status="ok",
+        message="manual-finish tile updated",
+        event_type="manual_finish.tile",
+        function_name="_inject_manual_finish_tile",
+        extra={"store_key": store_key, "metric": config.metric, "value": value},
+    )
 
 
 # ---------------------------------------------------------------------------

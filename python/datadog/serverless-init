@@ -1,0 +1,15 @@
+#!/bin/sh
+# Lightweight Datadog bootstrap shim executed before the real entrypoint.
+# Keeps defaults sane if deploy env forgot to set the variables.
+set -euo pipefail
+
+export DD_TRACE_ENABLED="${DD_TRACE_ENABLED:-true}"
+export DD_RUNTIME_METRICS_ENABLED="${DD_RUNTIME_METRICS_ENABLED:-true}"
+export DD_LOGS_ENABLED="${DD_LOGS_ENABLED:-true}"
+
+# Mirror STAGE into DD_ENV if the latter is unset.
+if [ -n "${STAGE:-}" ] && [ -z "${DD_ENV:-}" ]; then
+  export DD_ENV="${STAGE}"
+fi
+
+exec "$@"

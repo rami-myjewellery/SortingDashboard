@@ -7,6 +7,7 @@ import cv2, numpy as np
 
 from app.utils.imageFunctions.beltCropper import crop_belts
 from app.data.store import get_db
+from datadog_logger import log_datadog_event
 router = APIRouter()
 
 GROUND_TRUTH = {
@@ -164,5 +165,11 @@ async def analyze_image(
     print(db)
     ordered_counts = {k: belt_counts.get(k, 0) for k in BELT_ORDER_LEFT_TO_RIGHT}
     success = calc_score(belt_counts, GROUND_TRUTH)
-    print(f"🎯 Label match success: {success:.2f}%")
+    log_datadog_event(
+        status="ok",
+        message=f"Label match success: {success:.2f}%",
+        event_type="sorting_belt.analyze_image",
+        function_name="analyze_image",
+        extra={"score": round(success, 2), "belt_counts": ordered_counts, "status": db.status},
+    )
     return {"gpt_answer": ordered_counts}

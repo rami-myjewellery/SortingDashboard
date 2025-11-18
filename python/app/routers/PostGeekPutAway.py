@@ -24,6 +24,7 @@ from fastapi import APIRouter, HTTPException, Request
 from app.utils.jobExtractors.UpdateJobsStoreMetrics import (
     update_jobs_store_metric,
 )
+from datadog_logger import log_datadog_event
 
 router = APIRouter()
 
@@ -98,6 +99,12 @@ async def handle_geek_putaway_push(request: Request):
     try:
         body: Dict[str, Any] = await request.json()
     except Exception as exc:  # noqa: BLE001
+        log_datadog_event(
+            status="error",
+            message=f"Body is not valid JSON: {exc}",
+            event_type="geek.putaway",
+            function_name="handle_geek_putaway_push",
+        )
         raise HTTPException(status_code=400, detail=f"Body is not valid JSON: {exc}")
 
     if "message" in body and isinstance(body["message"], dict) and "data" in body["message"]:
@@ -105,6 +112,12 @@ async def handle_geek_putaway_push(request: Request):
             decoded_bytes = base64.b64decode(body["message"]["data"])
             inner_json = json.loads(decoded_bytes.decode("utf-8"))
         except Exception as exc:
+            log_datadog_event(
+                status="error",
+                message=f"Failed to decode message.data: {exc}",
+                event_type="geek.putaway",
+                function_name="handle_geek_putaway_push",
+            )
             raise HTTPException(status_code=400, detail=f"Failed to decode message.data: {exc}")
         # Merge header/body if present
         payload = inner_json
@@ -131,5 +144,13 @@ async def handle_geek_putaway_push(request: Request):
         }
         update_result = await update_jobs_store_metric(job_data)
         now = datetime.now(timezone.utc).isoformat()
+        log_datadog_event(
+            status="ok",
+            message=f"Geek Putaway processed ({job_id})",
+            event_type="geek.putaway",
+            function_name="handle_geek_putaway_push",
+            jobs_id=str(job_id) if job_id is not None else None,
+            extra={"quantity": job_data["QUANTITY"], "update": update_result},
+        )
         print(f"✅ [Geek Putaway-PubSub] {job_id} qty={job_data['QUANTITY']} at {now} update={update_result}")
         return {"status": "success", "job_id": job_id, "dashboard": "geek putaways", "quantity": job_data["QUANTITY"]}

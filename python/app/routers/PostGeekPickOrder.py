@@ -24,6 +24,7 @@ from fastapi import APIRouter, HTTPException, Request
 from app.utils.jobExtractors.UpdateJobsStoreMetrics import (
     update_jobs_store_metric,
 )
+from datadog_logger import log_datadog_event
 
 
 router = APIRouter()
@@ -32,6 +33,12 @@ async def handle_geek_pickorder_push(request: Request):
     try:
         body: Dict[str, Any] = await request.json()
     except Exception as exc:
+        log_datadog_event(
+            status="error",
+            message=f"Body is not valid JSON: {exc}",
+            event_type="geek.pickorder",
+            function_name="handle_geek_pickorder_push",
+        )
         raise HTTPException(status_code=400, detail=f"Body is not valid JSON: {exc}")
 
     # Navigate into the structure
@@ -60,6 +67,14 @@ async def handle_geek_pickorder_push(request: Request):
     update_result = await update_jobs_store_metric(job_data)
 
     now = datetime.now(timezone.utc).isoformat()
+    log_datadog_event(
+        status="ok",
+        message=f"Geek PickOrder processed ({job_id})",
+        event_type="geek.pickorder",
+        function_name="handle_geek_pickorder_push",
+        jobs_id=str(job_id) if job_id is not None else None,
+        extra={"dashboard": "geek pickorders", "update": update_result},
+    )
     print(f"✅ [Geek PickOrder] {job_id} at {now} -> metrics={update_result}")
 
     return {"status": "success", "job_id": job_id, "dashboard": "geek pickorders"}
