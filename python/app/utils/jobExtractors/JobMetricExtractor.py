@@ -20,7 +20,7 @@ async def extract_monopicking_metrics(job_data: Dict[str, Any]) -> Dict[str, Any
 
     # Ensure that 'DURATION_SECONDS' and 'LINE_COUNT' are valid numbers, otherwise set them to default values.
     duration_seconds = job_data.get("DURATION_SECONDS", 0)
-    line_count = job_data.get("LINE_COUNT", 1)  # Default to 1 to avoid division by zero.
+    line_count = job_data.get("NUMBER_OF_LINES", 1)  # Default to 1 to avoid division by zero.
 
     # If either value is None or not a valid number, handle accordingly
     if duration_seconds is None or not isinstance(duration_seconds, (int, float)):
@@ -36,7 +36,7 @@ async def extract_monopicking_metrics(job_data: Dict[str, Any]) -> Dict[str, Any
         "comment": job_data.get("comment", ""),  # Extract the comment
         "category": job_data.get("category", ""),  # Extract the category
         "employee_code": job_data.get("EMPLOYEE_CODE", ""),  # Extract employee code
-        "total_items_processed": job_data.get("LINE_COUNT", 0),  # Number of items processed
+        "total_items_processed": job_data.get("NUMBER_OF_LINES", 0),  # Number of items processed
         "pick_duration": duration_seconds,  # Time spent picking items
         "picking_speed": picking_speed,  # Time per item picked
         "total_cartons_picked": job_data.get("CARTON_COUNT", 0),  # Cartons picked
