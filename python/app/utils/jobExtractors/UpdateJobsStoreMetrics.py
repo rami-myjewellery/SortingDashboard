@@ -10,49 +10,66 @@ WINDOW = timedelta(seconds=60)   # size of the rolling window
 MAX_APM = 100                    # full-bar value
 
 # ── KPI Update Function ──────────────────────────────────────────────────────
+
 def calc_kpi_based_on_event(job_data: Dict[str, Any], dashboard: Any) -> None:
     """
-    Increments dashboard KPIs by the quantity in job_data (default 1 if missing):
-    - total items processed today
-    - items processed per hour
+    Increments dashboard KPIs by the quantity in job_data:
+    - For Pick jobs: use NUMBER_OF_LINES (fallback 1)
+    - Else: use RAW_GEEK.data.ipg_list[*].base_lv_quantity (fallback 1)
     """
     now = datetime.now(timezone.utc)
 
-    # Extract quantity from job_data
-    inner = job_data.get("RAW_GEEK", {}).get("data", {})
-    ipg_list = inner.get("ipg_list", [])
-    if isinstance(ipg_list, list) and ipg_list:
-        qty = sum(int(item.get("base_lv_quantity", 1)) for item in ipg_list)
-    else:
-        qty = 1  # fallback if ipg_list missing/empty
+    job_type = job_data.get("job_type")
 
-    # Initialize tracking if not set
+    # ----- Determine qty -----
+    if job_type == "Pick":
+        # Dynamic quantity based on NUMBER_OF_LINES (or NUMBER_OF_HANDING_UNITS if you prefer)
+        raw_val = job_data.get("NUMBER_OF_LINES")  # or "NUMBER_OF_HANDING_UNITS"
+        try:
+            qty = int(raw_val) if raw_val is not None else 1
+        except (ValueError, TypeError):
+            qty = 1
+    else:
+        # Original RAW_GEEK-based logic as fallback for other job types
+        inner = job_data.get("RAW_GEEK", {}).get("data", {})
+        ipg_list = inner.get("ipg_list", [])
+        if isinstance(ipg_list, list) and ipg_list:
+            def safe_int(x, default=1):
+                try:
+                    return int(x)
+                except (ValueError, TypeError):
+                    return default
+
+            qty = sum(safe_int(item.get("base_lv_quantity", 1)) for item in ipg_list)
+        else:
+            qty = 1  # fallback if ipg_list missing/empty
+
+    # ----- Initialise KPI state if needed -----
     if getattr(dashboard, "kpi_state", None) is None:
         dashboard.kpi_state = {
             "date": now.date(),
             "total": 0,
-            "first_event_time": now
+            "first_event_time": now,
         }
 
     state = dashboard.kpi_state
 
-    # Reset for new day
+    # ----- Reset for a new day -----
     if state["date"] != now.date():
         state["date"] = now.date()
         state["total"] = 0
         state["first_event_time"] = now
 
-    # Increment by quantity (instead of +1)
+    # ----- Update totals -----
     state["total"] += qty
 
-    # Calculate items/hr
-    hours_elapsed = max((now - state["first_event_time"]).total_seconds() / 3600, 1/60)
+    # ----- Calculate items per hour -----
+    hours_elapsed = max((now - state["first_event_time"]).total_seconds() / 3600, 1 / 60)
     per_hour = state["total"] / hours_elapsed
 
-    # Assign to KPIs (assume [0] = per hour, [1] = today)
+    # Assume [0] = per hour, [1] = total today
     dashboard.kpis[0].value = round(per_hour, 0)
     dashboard.kpis[1].value = state["total"]
-
 
 # ── Main Update Function ─────────────────────────────────────────────────────
 async def update_jobs_store_metric(job_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -99,7 +116,7 @@ async def update_jobs_store_metric(job_data: Dict[str, Any]) -> Dict[str, Any]:
 
     # Determine how many lines to add
     amount_of_lines = _coerce_lines(
-        job_data.get("'NUMBER_OF_LINES'", None) if "'NUMBER_OF_LINES'" in job_data else job_data.get("'NUMBER_OF_LINES'", None),
+        job_data.get("NUMBER_OF_LINES", None) if "NUMBER_OF_LINES" in job_data else job_data.get("NUMBER_OF_LINES", None),
         default=1
     )
 
