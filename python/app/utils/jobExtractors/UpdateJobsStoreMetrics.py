@@ -99,7 +99,7 @@ async def update_jobs_store_metric(job_data: Dict[str, Any]) -> Dict[str, Any]:
 
     # Determine how many lines to add
     amount_of_lines = _coerce_lines(
-        job_data.get("AMOUNT_OF_LINES", None) if "AMOUNT_OF_LINES" in job_data else job_data.get("AMOUNT_OF_LINES", None),
+        job_data.get("'NUMBER_OF_LINES'", None) if "'NUMBER_OF_LINES'" in job_data else job_data.get("'NUMBER_OF_LINES'", None),
         default=1
     )
 
