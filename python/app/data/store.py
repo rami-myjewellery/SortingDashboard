@@ -42,11 +42,11 @@ _db: Dict[str, Dashboard] = {
         idleThreshold=60,
     ),
     "pick": Dashboard(
-        title="Picking",
+        title="Total Picks",
         status="good",
         kpis=[
-            Kpi(label="per hour", value=0, unit="amount"),
-            Kpi(label="today", value=0, unit="amount"),
+            Kpi(label="per hour", value=0, unit="Lines"),
+            Kpi(label="today", value=0, unit="Lines"),
         ],
         historyText="",
         people=[],
@@ -98,7 +98,7 @@ _db: Dict[str, Dashboard] = {
         idleThreshold=60,
     ),
     "geekpicking": Dashboard(
-        title="Geek Picking",
+        title="Geek Picks",
         status="good",
         kpis=[
             Kpi(label="per hour", value=0, unit="amount"),
