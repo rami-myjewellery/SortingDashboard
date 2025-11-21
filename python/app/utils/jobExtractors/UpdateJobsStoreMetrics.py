@@ -22,7 +22,7 @@ def calc_kpi_based_on_event(job_data: Dict[str, Any], dashboard: Any) -> None:
     job_type = job_data.get("job_type")
 
     # ----- Determine qty -----
-    if job_type == "Pick":
+    if job_type == "Pick" and "PICKBATCH_CONFIRMED" == 1:
         # Dynamic quantity based on NUMBER_OF_LINES (or NUMBER_OF_HANDING_UNITS if you prefer)
         raw_val = job_data.get("NUMBER_OF_LINES")  # or "NUMBER_OF_HANDING_UNITS"
         try:
