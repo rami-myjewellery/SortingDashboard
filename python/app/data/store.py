@@ -140,6 +140,7 @@ def _tick_once() -> None:
         db.people.sort(key=lambda person: person.last_seen or now, reverse=True)
         db.people[:] = db.people[:MAX_PEOPLE]
 
+
 def _ticker_loop() -> None:
     """
     Runs in its own daemon thread; sleeps `TICK_INTERVAL` seconds between
