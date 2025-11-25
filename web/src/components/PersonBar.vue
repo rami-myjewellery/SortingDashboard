@@ -4,7 +4,8 @@ import { computed } from 'vue'
 const props = defineProps({
   person:        { type: Object, required: true },
   action:        { type: Object, required: true },
-  idleThreshold: { type: Number, default: 40 } // seconds
+  idleThreshold: { type: Number, default: 40 }, // seconds
+  showIdleTimer: { type: Boolean, default: true }
 })
 
 // safe access
@@ -37,7 +38,7 @@ const idleDisplay = computed(() => {
       {{ person.action }}
     </div>
 
-    <div class="details">
+    <div class="details" v-if="showIdleTimer">
       <div class="clock" :title="`${idleSeconds}s inactive`"></div>
       <div class="idle-badge">
         Inactive: <strong>{{ idleDisplay }}</strong>

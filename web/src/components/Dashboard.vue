@@ -24,11 +24,14 @@ const route      = useRoute()
 const mode       = computed(() => route.params.mode as string | undefined)
 /* start with a default – must match the server’s HTML */
 const showPeople = ref(false)
+const showIdleTimer = ref(true)
 
 /* run only in the browser */
 onMounted(() => {
   showPeople.value =
       new URLSearchParams(window.location.search).get('bool') === 'true'
+  showIdleTimer.value =
+      new URLSearchParams(window.location.search).get('timer') !== 'false'
 })
 </script>
 
@@ -55,6 +58,7 @@ onMounted(() => {
           :key="p.name"
           :person="p"
           :idle-threshold="props.data.idleThreshold ?? 40"
+          :show-idle-timer="showIdleTimer"
       />
     </section>
     </ClientOnly>
