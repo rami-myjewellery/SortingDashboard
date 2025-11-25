@@ -5,6 +5,7 @@ from typing import Dict, Any
 from app.utils.MainUtils import get_or_create_person
 from app.data.store import get_db
 from datetime import timezone
+
 # ── Parameters ───────────────────────────────────────────────────────────────
 WINDOW = timedelta(seconds=60)   # size of the rolling window
 MAX_APM = 100                    # full-bar value
@@ -14,7 +15,8 @@ MAX_APM = 100                    # full-bar value
 def calc_kpi_based_on_event(job_data: Dict[str, Any], dashboard: Any) -> None:
     """
     Increments dashboard KPIs by the quantity in job_data:
-    - For Pick jobs: use NUMBER_OF_LINES (fallback 1)
+    - For Pick jobs: use NUMBER_OF_LINES (fallback 1), but only when PICKBATCH_CONFIRMED == 1
+    - For GeekPicking: use NUMBER_OF_LINES (fallback 1)
     - Else: use RAW_GEEK.data.ipg_list[*].base_lv_quantity (fallback 1)
     """
     now = datetime.now(timezone.utc)
@@ -22,13 +24,22 @@ def calc_kpi_based_on_event(job_data: Dict[str, Any], dashboard: Any) -> None:
     job_type = job_data.get("job_type")
 
     # ----- Determine qty -----
-    if job_type == "Pick" and "PICKBATCH_CONFIRMED" == 1:
+    if job_type == "Pick" and job_data.get("PICKBATCH_CONFIRMED") == 1:
         # Dynamic quantity based on NUMBER_OF_LINES (or NUMBER_OF_HANDING_UNITS if you prefer)
         raw_val = job_data.get("NUMBER_OF_LINES")  # or "NUMBER_OF_HANDING_UNITS"
         try:
-            qty = int(raw_val) if raw_val is not None else 1
+            qty = int(raw_val)
         except (ValueError, TypeError):
-            qty = 1
+            qty = 0
+
+    elif job_type == "GeekPicking":
+        # Geek picking jobs: also count NUMBER_OF_LINES
+        raw_val = job_data.get("NUMBER_OF_LINES")
+        try:
+            qty = int(raw_val)
+        except (ValueError, TypeError):
+            qty = 0
+
     else:
         # Original RAW_GEEK-based logic as fallback for other job types
         inner = job_data.get("RAW_GEEK", {}).get("data", {})

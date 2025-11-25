@@ -37,8 +37,8 @@ PATCHES: Dict[str, Dict] = {
     "GeekPicking": {
         "title": "Geek Picking",
         "kpis": [
-            Kpi(label="Picking Speed", value=0, unit="items/sec"),
-            Kpi(label="Cartons Processed", value=0, unit="cartons"),
+            Kpi(label="Picking Speed", value=0, unit="lines/sec"),
+            Kpi(label="Lines Processed", value=0, unit="cartons"),
             Kpi(label="Pick Efficiency", value=0, unit="%"),
         ],
     },
