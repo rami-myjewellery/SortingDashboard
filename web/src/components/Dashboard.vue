@@ -42,9 +42,10 @@ onMounted(() => {
     <section class="kpi-area">
       <div class="kpis">
         <KpiCard
-            v-for="k in props.data.kpis"
+            v-for="(k, idx) in props.data.kpis"
             :key="k.label"
             v-bind="k"
+            :class="{ 'wide-kpi': idx === 2 && props.data.kpis.length > 2 }"
         />
       </div>
     </section>

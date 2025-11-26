@@ -16,7 +16,6 @@ defineProps({label: String, value: Number, unit: String})
   padding: 2vh;
   border-radius: 12px;
   text-align: center;
-  min-width: 26vw;
   z-index: 2;
 }
 

@@ -11,7 +11,7 @@ from app.models import Dashboard, Kpi
 # ── Tuning knobs ────────────────────────────────────────────────────────────
 DECAY_RATE           = 0.99     # 1 % speed drop **per second of idleness**
 IDLE_TICK_FALLBACK   = 1        # seconds to add if last_seen is None
-MAX_PEOPLE           = 5        # keep only the N most-recent operators
+MAX_PEOPLE           = 10       # keep only the N most-recent operators
 TICK_INTERVAL        = 1.0      # seconds between background ticks
 IDLE_REMOVAL_SECONDS = 30 * 60  # NEW: remove from list if idle ≥ 30 minutes
 

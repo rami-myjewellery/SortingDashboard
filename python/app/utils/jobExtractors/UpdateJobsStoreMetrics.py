@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Any
 
 from app.utils.MainUtils import get_or_create_person
-from app.data.store import get_db
+from app.data.store import get_db, MAX_PEOPLE
 from datetime import timezone
 
 # ── Parameters ───────────────────────────────────────────────────────────────
@@ -152,7 +152,7 @@ async def update_jobs_store_metric(job_data: Dict[str, Any]) -> Dict[str, Any]:
             (getattr(p, "last_seen", None) or datetime.min.replace(tzinfo=timezone.utc)),  # tie-breaker
         )
     )
-    db.people = db.people[:5]
+    db.people = db.people[:MAX_PEOPLE]
 
     # 8) KPI update
     calc_kpi_based_on_event(job_data, db)
