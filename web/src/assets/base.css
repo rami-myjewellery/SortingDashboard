@@ -50,7 +50,7 @@ header{
 
 /* ---------- MAIN & KPI ---------- */
 main{flex:1 1 0;display:flex;flex-direction:column;padding:2vh 2vw 3vh 2vw}
-.kpi-area{flex:0 0 42vh;display:flex;justify-content:center;align-items:stretch}
+.kpi-area{flex:0 0 36vh;display:flex;justify-content:center;align-items:stretch}
 .kpis{
   display:grid;
   grid-template-columns: 1fr 1fr;
@@ -72,21 +72,14 @@ main{flex:1 1 0;display:flex;flex-direction:column;padding:2vh 2vw 3vh 2vw}
 .history{margin-top:1.6vh;font-size:clamp(.9rem,2.3vw,1.8rem);text-align:center;opacity:.85}
 
 /* ---------- PEOPLE ---------- */
-.people-list{
-  flex:1 1 0;
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
-  grid-auto-rows:minmax(5.5vh,1fr);
-  gap:0.8vh 1vw;
-  margin-top:1.2vh;
-  align-content:start;
-}
+.people-list{--person-gap:0.6vh;flex:1 1 0;display:flex;flex-direction:column;gap:var(--person-gap);margin-top:1.2vh}
 .person-bar{
   display:flex;align-items:center;justify-content:space-between;
   background:var(--clr-person);border-radius:0 .75rem 0 0;
-  padding:0.6vh 1.6vw;height:100%;
-  min-height:5.5vh;
-  font-size:clamp(1.1rem,3.6vw,2.6rem);font-weight:500;line-height:1.1;
+  padding:0.4vh 1.6vw;
+  height:calc((100% - 9 * var(--person-gap))/10);
+  min-height:3.2vh;
+  font-size:clamp(1rem,3vw,2.2rem);font-weight:500;line-height:1.1;
   transition:background .3s
 }
 .person-bar.good{background:#13c38b20}
