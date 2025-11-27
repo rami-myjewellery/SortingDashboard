@@ -40,6 +40,7 @@ body::before{
   filter:grayscale(100%) brightness(1.35) contrast(1);
   mix-blend-mode:multiply;pointer-events:none;z-index:-1;
 }
+html.no-bg body::before{display:none}
 
 /* ---------- HEADER ---------- */
 header{

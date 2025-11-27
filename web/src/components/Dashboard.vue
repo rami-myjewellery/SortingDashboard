@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed,ref, onMounted  } from 'vue'
+import { computed,ref, onMounted, onBeforeUnmount  } from 'vue'
 import { useRoute } from 'vue-router'
 
 import KpiCard   from './KpiCard.vue'
@@ -28,10 +28,16 @@ const showIdleTimer = ref(true)
 
 /* run only in the browser */
 onMounted(() => {
-  showPeople.value =
-      new URLSearchParams(window.location.search).get('bool') === 'true'
-  showIdleTimer.value =
-      new URLSearchParams(window.location.search).get('timer') !== 'false'
+  const params = new URLSearchParams(window.location.search)
+  showPeople.value = params.get('bool') === 'true'
+  showIdleTimer.value = params.get('timer') !== 'false'
+
+  const hideBackground = params.get('bg') === 'false'
+  document.documentElement.classList.toggle('no-bg', hideBackground)
+})
+
+onBeforeUnmount(() => {
+  document.documentElement.classList.remove('no-bg')
 })
 </script>
 
