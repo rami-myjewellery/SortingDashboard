@@ -28,8 +28,30 @@ const syncDetailsClass = (route) => {
   }
 }
 
+const shouldHideBackground = (route) => {
+  const raw = route?.query?.bg
+  if (raw === undefined) return false
+  const val = Array.isArray(raw) ? raw[0] : raw
+  return ['0', 'false', 'no', 'off'].includes(String(val).toLowerCase())
+}
+
+const syncBackgroundClass = (route) => {
+  if (shouldHideBackground(route)) {
+    html.classList.add('no-bg')
+  } else {
+    html.classList.remove('no-bg')
+  }
+}
+
 // keep synced on navigation and first load
-router.afterEach((to) => syncDetailsClass(to))
-router.isReady().then(() => syncDetailsClass(router.currentRoute.value))
+router.afterEach((to) => {
+  syncDetailsClass(to)
+  syncBackgroundClass(to)
+})
+router.isReady().then(() => {
+  const route = router.currentRoute.value
+  syncDetailsClass(route)
+  syncBackgroundClass(route)
+})
 
 createApp(App).use(router).mount('#app')
