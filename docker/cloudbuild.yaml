@@ -10,44 +10,44 @@ substitutions:
   _DD_SITE: datadoghq.eu
 
 steps:
-  # # ───────────────────────── Build & push API image ─────────────────────────
-  # - id: build-api
-  #   name: gcr.io/cloud-builders/docker
-  #   args: [
-  #     'build', '-f', 'python/Dockerfile',
-  #     '-t', 'gcr.io/$PROJECT_ID/${_API_SERVICE}:${SHORT_SHA}',
-  #     'python'
-  #   ]
+  # ───────────────────────── Build & push API image ─────────────────────────
+  - id: build-api
+    name: gcr.io/cloud-builders/docker
+    args: [
+      'build', '-f', 'python/Dockerfile',
+      '-t', 'gcr.io/$PROJECT_ID/${_API_SERVICE}:${SHORT_SHA}',
+      'python'
+    ]
 
-  # - id: push-api
-  #   name: gcr.io/cloud-builders/docker
-  #   args: ['push', 'gcr.io/$PROJECT_ID/${_API_SERVICE}:${SHORT_SHA}']
+  - id: push-api
+    name: gcr.io/cloud-builders/docker
+    args: ['push', 'gcr.io/$PROJECT_ID/${_API_SERVICE}:${SHORT_SHA}']
   
-  # # ───────────────────────── Deploy API to Cloud Run ─────────────────────────
-  # - id: deploy-api
-  #   name: gcr.io/google.com/cloudsdktool/cloud-sdk
-  #   entrypoint: bash
-  #   secretEnv: ['DD_API_KEY']
-  #   args:
-  #     - '-c'
-  #     - |
-  #       gcloud run deploy ${_API_SERVICE} \
-  #         --image gcr.io/$PROJECT_ID/${_API_SERVICE}:${SHORT_SHA} \
-  #         --region ${_REGION} --platform managed \
-  #         --allow-unauthenticated \
-  #         --service-account pick-binding-dashboard@$PROJECT_ID.iam.gserviceaccount.com \
-  #         --vpc-connector ${_VPC_CONNECTOR} \
-  #         --vpc-egress all-traffic \
-  #         --min-instances ${_MIN_INST} \
-  #         --max-instances ${_MAX_INST} \
-  #         --port 8080 \
-  #         --set-env-vars STAGE=${_STAGE},DD_SITE=${_DD_SITE},DD_LOGS_ENABLED=true,DD_LOGS_INJECTION=true,DD_SERVICE=${_API_SERVICE},DD_VERSION=${SHORT_SHA},DD_ENV=${_STAGE},DD_API_KEY=$${DD_API_KEY}
+  # ───────────────────────── Deploy API to Cloud Run ─────────────────────────
+  - id: deploy-api
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: bash
+    secretEnv: ['DD_API_KEY']
+    args:
+      - '-c'
+      - |
+        gcloud run deploy ${_API_SERVICE} \
+          --image gcr.io/$PROJECT_ID/${_API_SERVICE}:${SHORT_SHA} \
+          --region ${_REGION} --platform managed \
+          --allow-unauthenticated \
+          --service-account pick-binding-dashboard@$PROJECT_ID.iam.gserviceaccount.com \
+          --vpc-connector ${_VPC_CONNECTOR} \
+          --vpc-egress all-traffic \
+          --min-instances ${_MIN_INST} \
+          --max-instances ${_MAX_INST} \
+          --port 8080 \
+          --set-env-vars STAGE=${_STAGE},DD_SITE=${_DD_SITE},DD_LOGS_ENABLED=true,DD_LOGS_INJECTION=true,DD_SERVICE=${_API_SERVICE},DD_VERSION=${SHORT_SHA},DD_ENV=${_STAGE},DD_API_KEY=$${DD_API_KEY}
         
-  #       # Capture the fresh URL for the next step
-  #       API_URL=$(gcloud run services describe ${_API_SERVICE} \
-  #                  --region ${_REGION} --platform managed \
-  #                  --format='value(status.url)')
-  #       echo "API_URL=$${API_URL}" > /workspace/.api_url
+        # Capture the fresh URL for the next step
+        API_URL=$(gcloud run services describe ${_API_SERVICE} \
+                   --region ${_REGION} --platform managed \
+                   --format='value(status.url)')
+        echo "API_URL=$${API_URL}" > /workspace/.api_url
   
   # ───────────────────────── Build & push WEB image ─────────────────────────
   - id: build-web
