@@ -73,23 +73,23 @@ main{flex:1 1 0;display:flex;flex-direction:column;padding:2vh 2vw 3vh 2vw}
 .history{margin-top:1.6vh;font-size:clamp(.9rem,2.3vw,1.8rem);text-align:center;opacity:.85}
 
 /* ---------- PEOPLE ---------- */
-.people-list{--person-gap:0.6vh;flex:1 1 0;display:flex;flex-direction:column;gap:var(--person-gap);margin-top:1.2vh}
+.people-list{--person-gap:0.35vh;flex:1 1 0;display:flex;flex-direction:column;gap:var(--person-gap);margin-top:0.6vh}
 .person-bar{
   display:flex;align-items:center;justify-content:space-between;
   background:var(--clr-person);border-radius:0 .75rem 0 0;
-  padding:0.4vh 1.6vw;
+  padding:0.25vh 1.2vw;
   height:calc((100% - 9 * var(--person-gap))/10);
-  min-height:3.2vh;
-  font-size:clamp(1rem,3vw,2.2rem);font-weight:500;line-height:1.1;
+  min-height:2.8vh;
+  font-size:clamp(0.9rem,2.4vw,1.9rem);font-weight:500;line-height:1.1;
   transition:background .3s
 }
 .person-bar.good{background:#13c38b20}
 .person-bar.warn{background:#ff9c2a25}
 .person-bar.idle {
-  /* diagonaal verloop van licht- naar donkergrijs */
+  /* warm overlay instead of white for inactive entries */
   background: linear-gradient(135deg,
-  var(--clr-person-idle-light) 0%,
-  var(--clr-person-idle-dark) 100%);
+  rgba(255, 156, 42, 0.45) 0%,
+  rgba(255, 120, 0, 0.35) 100%);
   font-style: italic;
   color: var(--clr-text-dark);          /* blijft goed leesbaar */
 }

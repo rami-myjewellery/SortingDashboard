@@ -7,8 +7,9 @@ from app.data.store import get_db, MAX_PEOPLE
 from datetime import timezone
 
 # ── Parameters ───────────────────────────────────────────────────────────────
-WINDOW = timedelta(seconds=60)   # size of the rolling window
-MAX_APM = 100                    # full-bar value
+ROLLING_WINDOW = timedelta(minutes=60)   # size of the rolling KPI window
+JOB_TIMES_MAXLEN = 6000                  # keep enough events to cover the hour
+MAX_RECENT_EVENTS = 6000                 # keep enough events for the last hour
 
 # ── KPI Update Function ──────────────────────────────────────────────────────
 
@@ -61,22 +62,42 @@ def calc_kpi_based_on_event(job_data: Dict[str, Any], dashboard: Any) -> None:
             "date": now.date(),
             "total": 0,
             "first_event_time": now,
+            "recent": [],
         }
 
     state = dashboard.kpi_state
 
     # ----- Reset for a new day -----
-    if state["date"] != now.date():
+    if state.get("date") != now.date():
         state["date"] = now.date()
         state["total"] = 0
         state["first_event_time"] = now
+        state["recent"] = []
 
     # ----- Update totals -----
     state["total"] += qty
 
-    # ----- Calculate items per hour -----
-    hours_elapsed = max((now - state["first_event_time"]).total_seconds() / 3600, 1 / 60)
-    per_hour = state["total"] / hours_elapsed
+    # ----- Maintain rolling one-hour window -----
+    recent_events = state.get("recent") or []
+    recent = deque(
+        (
+            (float(event.get("ts", 0)), int(event.get("qty", 0)))
+            for event in recent_events
+            if isinstance(event, dict)
+        ),
+        maxlen=MAX_RECENT_EVENTS,
+    )
+    recent.append((now.timestamp(), qty))
+
+    cutoff_ts = (now - ROLLING_WINDOW).timestamp()
+    while recent and recent[0][0] < cutoff_ts:
+        recent.popleft()
+
+    window_total = sum(amount for _, amount in recent)
+    per_hour = window_total * (3600 / ROLLING_WINDOW.total_seconds())
+
+    # Persist recent events in a JSON-friendly format
+    state["recent"] = [{"ts": ts, "qty": amount} for ts, amount in recent]
 
     # Assume [0] = per hour, [1] = total today
     dashboard.kpis[0].value = round(per_hour, 0)
@@ -101,38 +122,48 @@ async def update_jobs_store_metric(job_data: Dict[str, Any]) -> Dict[str, Any]:
     # 2) Get/create operator
     person = get_or_create_person(db.people, operator_name, job_type, comment)
 
-    # 3) Ensure rolling window
-    if not hasattr(person, "job_times"):
-        person.job_times = deque(maxlen=MAX_APM)  # type: ignore[attr-defined]
-
-    job_times: deque = person.job_times  # type: ignore[attr-defined]
-    job_times.append(now.timestamp())
-
-    # 4) Prune old timestamps
-    cutoff = (now - WINDOW).timestamp()
-    while job_times and job_times[0] < cutoff:
-        job_times.popleft()
-
-    # Helper: coerce a value to a non-negative integer, with default
+    # 3) Determine how many lines to add
     def _coerce_lines(val, default=1) -> int:
         # Prefer LINE_COUNT, then amount_of_lines; keep default=1 to mimic old +1 behavior when missing
         try:
             if val is None:
                 return default
-            # allow strings like "7"
-            num = int(float(val))
+            num = int(float(val))  # allow strings like "7"
             return max(0, num)  # no negative increments
         except Exception:
             return default
 
-    # Determine how many lines to add
     amount_of_lines = _coerce_lines(
         job_data.get("NUMBER_OF_LINES", None) if "NUMBER_OF_LINES" in job_data else job_data.get("NUMBER_OF_LINES", None),
-        default=1
+        default=1,
     )
 
+    # 4) Ensure rolling window (store [timestamp, qty] pairs) and speed
+    existing_times = getattr(person, "job_times", None)
+    normalized_times = deque(maxlen=JOB_TIMES_MAXLEN)
+    if existing_times:
+        for entry in existing_times:
+            if isinstance(entry, (list, tuple)) and len(entry) == 2:
+                ts, qty = entry
+            else:
+                ts, qty = entry, 1
+            try:
+                normalized_times.append((float(ts), int(qty)))
+            except (TypeError, ValueError):
+                continue
+    person.job_times = normalized_times  # type: ignore[attr-defined]
+    job_times: deque = person.job_times  # type: ignore[attr-defined]
+    job_times.append((now.timestamp(), amount_of_lines))
+
+    cutoff = (now - ROLLING_WINDOW).timestamp()
+    while job_times and job_times[0][0] < cutoff:
+        job_times.popleft()
+
+    window_lines = sum(max(qty, 0) for ts, qty in job_times if ts >= cutoff)
+    window_hours = ROLLING_WINDOW.total_seconds() / 3600 or 1
+    person.speed = int(round(window_lines / window_hours))
+
     # 5) Activity & metadata
-    person.speed = MAX_APM
     person.jobs = (getattr(person, "jobs", 0) or 0) + amount_of_lines  # ✅ add number of lines
     person.last_seen = now
     person.idleSeconds = 0
@@ -145,12 +176,10 @@ async def update_jobs_store_metric(job_data: Dict[str, Any]) -> Dict[str, Any]:
             continue
         p.idleSeconds = int((datetime.now(timezone.utc) - p.last_seen).total_seconds())
 
-    # 7) Trim people list
+    # 7) Trim people list (most recent activity first)
     db.people.sort(
-        key=lambda p: (
-            -int(getattr(p, "idleSeconds", 0)),  # primary: idle seconds (desc)
-            (getattr(p, "last_seen", None) or datetime.min.replace(tzinfo=timezone.utc)),  # tie-breaker
-        )
+        key=lambda p: (getattr(p, "last_seen", None) or datetime.min.replace(tzinfo=timezone.utc)),
+        reverse=True,
     )
     db.people = db.people[:MAX_PEOPLE]
 

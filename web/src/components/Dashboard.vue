@@ -7,7 +7,13 @@ import PersonBar from './PersonBar.vue'
 
 /* ───────── props ───────── */
 interface Kpi { label: string; value: number }
-interface Person { name: string; /* … */ }
+interface Person {
+  name: string
+  last_seen?: string | number | Date
+  lastSeen?: string | number | Date
+  idleSeconds?: number
+  [key: string]: unknown
+}
 
 const props = defineProps<{
   data: {
@@ -25,6 +31,21 @@ const mode       = computed(() => route.params.mode as string | undefined)
 /* start with a default – must match the server’s HTML */
 const showPeople = ref(false)
 const showIdleTimer = ref(true)
+const visiblePeople = computed(() => {
+  const list = Array.isArray(props.data.people) ? [...props.data.people] : []
+  const now = Date.now()
+  return list
+      .map((person) => {
+        const rawLastSeen = person.last_seen ?? person.lastSeen
+        const parsed = rawLastSeen ? new Date(rawLastSeen).getTime() : NaN
+        const fallback = typeof person.idleSeconds === 'number' ? now - person.idleSeconds * 1000 : 0
+        const ts = Number.isFinite(parsed) ? parsed : fallback
+        return { ts, person }
+      })
+      .sort((a, b) => b.ts - a.ts)
+      .slice(0, 10)
+      .map((entry) => entry.person)
+})
 
 /* run only in the browser */
 onMounted(() => {
@@ -54,7 +75,7 @@ onMounted(() => {
     <ClientOnly>
     <section class="people-list" v-if="showPeople">
       <PersonBar
-          v-for="p in props.data.people"
+          v-for="p in visiblePeople"
           :key="p.name"
           :person="p"
           :idle-threshold="props.data.idleThreshold ?? 40"

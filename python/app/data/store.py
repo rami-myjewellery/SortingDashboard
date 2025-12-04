@@ -137,7 +137,10 @@ def _tick_once() -> None:
         db.people[:] = [p for p in db.people if (p.idleSeconds or 0) < IDLE_REMOVAL_SECONDS]
 
         # Existing behavior: keep the most recently seen, then cap list length
-        db.people.sort(key=lambda person: person.last_seen or now, reverse=True)
+        db.people.sort(
+            key=lambda person: person.last_seen or datetime.min.replace(tzinfo=timezone.utc),
+            reverse=True,
+        )
         db.people[:] = db.people[:MAX_PEOPLE]
 
 
