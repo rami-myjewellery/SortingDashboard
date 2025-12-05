@@ -13,9 +13,13 @@ const idleSeconds = computed(() =>
     Math.max(0, Number(props.person?.idleSeconds ?? 0))
 )
 
-// simple class based on inactivity only
+// simple class based on inactivity; escalate color as time away increases
 const perfClass = computed(() => {
-  return idleSeconds.value > props.idleThreshold ? 'idle' : 'good'
+  if (!props.showIdleTimer) return 'timer-off'
+  const seconds = idleSeconds.value
+  if (seconds > props.idleThreshold * 2) return 'idle'
+  if (seconds > props.idleThreshold)    return 'warn'
+  return 'good'
 })
 
 // format like "1h 2m 3s", "12m 4s", or "15s"
