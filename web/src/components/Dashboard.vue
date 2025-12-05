@@ -48,10 +48,18 @@ const visiblePeople = computed(() => {
 })
 
 /* run only in the browser */
+const parseBooleanParam = (value: string | null, defaultValue: boolean) => {
+  if (value === null) return defaultValue
+  const normalized = value.trim().toLowerCase()
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false
+  return defaultValue
+}
+
 onMounted(() => {
   const params = new URLSearchParams(window.location.search)
-  showPeople.value = params.get('bool') === 'true'
-  showIdleTimer.value = params.get('timer') !== 'false'
+  showPeople.value = parseBooleanParam(params.get('bool'), false)
+  showIdleTimer.value = parseBooleanParam(params.get('timer'), true)
 })
 </script>
 

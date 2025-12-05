@@ -4,6 +4,7 @@ import './assets/base.css'   // global styles
 import router from './router'
 
 const html = document.documentElement
+const AUTO_RELOAD_MS = 5 * 60 * 1000
 
 // decide whether to show inactivity details based on URL query
 const shouldShowDetails = (route) => {
@@ -41,6 +42,13 @@ const syncBackgroundClass = (route) => {
   } else {
     html.classList.remove('no-bg')
   }
+}
+
+// periodic hard refresh to pick up new frontend deploys; URL/state stays intact
+if (typeof window !== 'undefined') {
+  setInterval(() => {
+    window.location.reload()
+  }, AUTO_RELOAD_MS)
 }
 
 // keep synced on navigation and first load

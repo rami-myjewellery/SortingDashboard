@@ -93,6 +93,8 @@ main{flex:1 1 0;display:flex;flex-direction:column;padding:2vh 2vw 3vh 2vw}
   font-style: italic;
   color: var(--clr-text-dark);          /* blijft goed leesbaar */
 }
+.person-name,
+.person-action{color:var(--clr-accent);}
 
 
 /* ---------- DETAILS ---------- */

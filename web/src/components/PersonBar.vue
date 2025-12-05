@@ -33,8 +33,8 @@ const idleDisplay = computed(() => {
 
 <template>
   <div class="person-bar" :class="perfClass">
-    <span class="name">{{ person.name }}</span>
-    <div class="name" style="font-size: medium; text-align: right">
+    <span class="person-name">{{ person.name }}</span>
+    <div class="person-action" style="font-size: medium; text-align: right">
       {{ person.action }}
     </div>
 
