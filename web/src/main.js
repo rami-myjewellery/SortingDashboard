@@ -1,7 +1,14 @@
 import { createApp } from 'vue'
+import axios from 'axios'
 import App from './App.vue'
 import './assets/base.css'   // global styles
 import router from './router'
+
+// Automatically send x-api-key on all API calls if configured
+const apiKey = import.meta.env.VITE_DASHBOARD_API_KEY
+if (apiKey) {
+  axios.defaults.headers.common['x-api-key'] = apiKey
+}
 
 const html = document.documentElement
 const AUTO_RELOAD_MS = 5 * 60 * 1000

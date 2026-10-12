@@ -16,16 +16,24 @@ def create_app() -> FastAPI:
         "https://sorting-dashboard-web-208732756826.europe-west4.run.app",
     ]
 
+    from fastapi import Depends
+    from app.auth import verify_api_key
+
     app = FastAPI(title="Sorting Dashboard API", version="1.0.0", docs_url="/")
 
     app.add_middleware(
         CORSMiddleware,
         allow_origins=ALLOWED_ORIGINS,
         allow_methods=["*"],
-        allow_headers=["*"],
+        allow_headers=["*", "x-api-key", "X-API-KEY"],
     )
 
-    app.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
+    app.include_router(
+        dashboard.router,
+        prefix="/dashboard",
+        tags=["dashboard"],
+        dependencies=[Depends(verify_api_key)],
+    )
     app.include_router(sortingBeltAnalyser.router, prefix="/analysis", tags=["analyse-belt"])
     app.include_router(PostJobsActionToDashboard.router, prefix="/actions", tags=["sorting-actions"])
     app.include_router(PostGeekPutAway.router, prefix="/actions", tags=["put-away"])

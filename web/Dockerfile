@@ -6,6 +6,8 @@ COPY package*.json ./
 RUN npm ci            # deterministic install
 
 COPY . .
+ARG VITE_DASHBOARD_API_KEY
+ENV VITE_DASHBOARD_API_KEY=$VITE_DASHBOARD_API_KEY
 RUN npm run build    
 
 # ── Runtime ─────────────────────────────────────────────────────────
