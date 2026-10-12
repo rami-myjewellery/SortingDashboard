@@ -1,0 +1,12 @@
+.gcloudignore
+.git
+.gitignore
+node_modules/
+**/node_modules/
+.venv/
+**/__pycache__/
+*.pyc
+.idea/
+.DS_Store
+dist/
+**/dist/

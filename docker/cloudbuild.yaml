@@ -8,6 +8,7 @@ substitutions:
   _MAX_INST: '2'
   _STAGE: staging
   _DD_SITE: datadoghq.eu
+  SHORT_SHA: 'latest'
 
 steps:
   # ───────────────────────── Build & push API image ─────────────────────────
