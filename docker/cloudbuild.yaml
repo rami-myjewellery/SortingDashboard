@@ -8,7 +8,7 @@ substitutions:
   _MAX_INST: '2'
   _STAGE: staging
   _DD_SITE: datadoghq.eu
-  SHORT_SHA: 'latest'
+  _TAG: 'latest'
 
 steps:
   # ───────────────────────── Build & push API image ─────────────────────────
@@ -16,13 +16,13 @@ steps:
     name: gcr.io/cloud-builders/docker
     args: [
       'build', '-f', 'python/Dockerfile',
-      '-t', 'gcr.io/$PROJECT_ID/${_API_SERVICE}:${SHORT_SHA}',
+      '-t', 'gcr.io/$PROJECT_ID/${_API_SERVICE}:${_TAG}',
       'python'
     ]
 
   - id: push-api
     name: gcr.io/cloud-builders/docker
-    args: ['push', 'gcr.io/$PROJECT_ID/${_API_SERVICE}:${SHORT_SHA}']
+    args: ['push', 'gcr.io/$PROJECT_ID/${_API_SERVICE}:${_TAG}']
   
   # ───────────────────────── Deploy API to Cloud Run ─────────────────────────
   - id: deploy-api
@@ -33,7 +33,7 @@ steps:
       - '-c'
       - |
         gcloud run deploy ${_API_SERVICE} \
-          --image gcr.io/$PROJECT_ID/${_API_SERVICE}:${SHORT_SHA} \
+          --image gcr.io/$PROJECT_ID/${_API_SERVICE}:${_TAG} \
           --region ${_REGION} --platform managed \
           --allow-unauthenticated \
           --service-account pick-binding-dashboard@$PROJECT_ID.iam.gserviceaccount.com \
@@ -42,7 +42,7 @@ steps:
           --min-instances ${_MIN_INST} \
           --max-instances ${_MAX_INST} \
           --port 8080 \
-          --set-env-vars STAGE=${_STAGE},DD_SITE=${_DD_SITE},DD_LOGS_ENABLED=true,DD_LOGS_INJECTION=true,DD_SERVICE=${_API_SERVICE},DD_VERSION=${SHORT_SHA},DD_ENV=${_STAGE},DD_API_KEY=$${DD_API_KEY},REQUIRE_AUTH=false \
+          --set-env-vars STAGE=${_STAGE},DD_SITE=${_DD_SITE},DD_LOGS_ENABLED=true,DD_LOGS_INJECTION=true,DD_SERVICE=${_API_SERVICE},DD_VERSION=${_TAG},DD_ENV=${_STAGE},DD_API_KEY=$${DD_API_KEY},REQUIRE_AUTH=false \
           --set-secrets DASHBOARD_API_KEY=DASHBOARD_API_KEY:latest
         
         # Capture the fresh URL for the next step
@@ -61,12 +61,12 @@ steps:
       - |
         docker build -f web/Dockerfile \
           --build-arg VITE_DASHBOARD_API_KEY="$$DASHBOARD_API_KEY" \
-          -t gcr.io/$PROJECT_ID/${_WEB_SERVICE}:${SHORT_SHA} \
+          -t gcr.io/$PROJECT_ID/${_WEB_SERVICE}:${_TAG} \
           web
 
   - id: push-web
     name: gcr.io/cloud-builders/docker
-    args: ['push', 'gcr.io/$PROJECT_ID/${_WEB_SERVICE}:${SHORT_SHA}']
+    args: ['push', 'gcr.io/$PROJECT_ID/${_WEB_SERVICE}:${_TAG}']
   
   # ───────────────────────── Deploy WEB to Cloud Run ─────────────────────────
   - id: deploy-web
@@ -81,11 +81,11 @@ steps:
         echo "Deploying web with BACKEND_URL=$${API_URL}"
         
         gcloud run deploy ${_WEB_SERVICE} \
-          --image gcr.io/$PROJECT_ID/${_WEB_SERVICE}:${SHORT_SHA} \
+          --image gcr.io/$PROJECT_ID/${_WEB_SERVICE}:${_TAG} \
           --region ${_REGION} --platform managed \
           --service-account pick-binding-dashboard@$PROJECT_ID.iam.gserviceaccount.com \
           --allow-unauthenticated \
-          --set-env-vars BACKEND_URL=$${API_URL},STAGE=${_STAGE},DD_SITE=${_DD_SITE},DD_LOGS_ENABLED=true,DD_LOGS_INJECTION=true,DD_SERVICE=${_WEB_SERVICE},DD_VERSION=${SHORT_SHA},DD_ENV=${_STAGE},DD_API_KEY=$${DD_API_KEY} \
+          --set-env-vars BACKEND_URL=$${API_URL},STAGE=${_STAGE},DD_SITE=${_DD_SITE},DD_LOGS_ENABLED=true,DD_LOGS_INJECTION=true,DD_SERVICE=${_WEB_SERVICE},DD_VERSION=${_TAG},DD_ENV=${_STAGE},DD_API_KEY=$${DD_API_KEY} \
           --min-instances ${_MIN_INST} \
           --max-instances ${_MAX_INST} \
           --port 8080
@@ -105,8 +105,8 @@ steps:
 #          '--region','${_REGION}','--platform','managed','--to-latest']
 
 images:
-  - 'gcr.io/$PROJECT_ID/${_API_SERVICE}:${SHORT_SHA}'
-  - 'gcr.io/$PROJECT_ID/${_WEB_SERVICE}:${SHORT_SHA}'
+  - 'gcr.io/$PROJECT_ID/${_API_SERVICE}:${_TAG}'
+  - 'gcr.io/$PROJECT_ID/${_WEB_SERVICE}:${_TAG}'
 
 options:
   logging: CLOUD_LOGGING_ONLY
