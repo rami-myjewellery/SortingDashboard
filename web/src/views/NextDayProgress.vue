@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import axios from 'axios'
-import { useRoute } from 'vue-router'
+import KpiCard from '@/components/KpiCard.vue'
 
 interface DockLoad {
   id: string
@@ -20,13 +20,6 @@ interface DockLoad {
   hds_total: number
   load_percentage: number
   urgency: 'critical' | 'warning' | 'upcoming' | 'scheduled'
-}
-
-interface DashboardData {
-  title: string
-  status: 'good' | 'risk' | 'bad'
-  kpis: Array<{ label: string; value: number | string; unit: string }>
-  loads?: DockLoad[]
 }
 
 const API = 'https://sorting-dashboard-api-208732756826.europe-west4.run.app/dashboard/NextDayProgress'
@@ -104,7 +97,7 @@ const DEFAULT_LOADS: DockLoad[] = [
   {
     id: 'load-inthq',
     load_code: '23/10/26 INTHQ',
-    carrier: 'Internal HQ Transfer',
+    carrier: 'Internal HQ',
     dock: 'DOCK-008',
     work_mode: 'LOA - LOAD',
     scheduling: '00h00 - 01h00',
@@ -120,12 +113,12 @@ const DEFAULT_LOADS: DockLoad[] = [
   }
 ]
 
-const data = ref<DashboardData | null>(null)
-const loads = computed<DockLoad[]>(() => {
-  const raw = data.value?.loads?.length ? data.value.loads : DEFAULT_LOADS
-  // Guarantee chronological sort: earliest scheduled time first
-  return [...raw].sort((a, b) => {
-    // 00:00 belongs at night (after 23:30)
+const rawLoads = ref<DockLoad[]>(DEFAULT_LOADS)
+const status = ref<'good' | 'risk' | 'bad'>('good')
+
+// Chronological sort from earliest upcoming departure to latest
+const sortedLoads = computed<DockLoad[]>(() => {
+  return [...rawLoads.value].sort((a, b) => {
     const normTime = (t: string) => {
       const [h, m] = t.split(':').map(Number)
       return h < 6 ? (h + 24) * 60 + m : h * 60 + m
@@ -134,517 +127,394 @@ const loads = computed<DockLoad[]>(() => {
   })
 })
 
-// Current live time
-const currentTime = ref(new Date().toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
-let timerInterval: any = null
-
-const nextUpcoming = computed(() => loads.value[0] ?? null)
-
-const totalRemainingPicks = computed(() => {
-  return loads.value.reduce((acc, l) => acc + (l.picks_total - l.picks_done), 0)
+const topKpis = computed(() => {
+  const remainingPicks = sortedLoads.value.reduce((acc, l) => acc + (l.picks_total - l.picks_done), 0)
+  const remainingHds = sortedLoads.value.reduce((acc, l) => acc + (l.hds_total - l.hds_loaded), 0)
+  return [
+    {
+      label: 'Openstaande Picks',
+      value: remainingPicks,
+      unit: 'picks'
+    },
+    {
+      label: 'Nog te laden op dock',
+      value: remainingHds,
+      unit: 'HDs'
+    }
+  ]
 })
 
-const totalRemainingHds = computed(() => {
-  return loads.value.reduce((acc, l) => acc + (l.hds_total - l.hds_loaded), 0)
+const historyText = computed(() => {
+  const first = sortedLoads.value[0]
+  if (!first) return ''
+  return `Eerstvolgende pickup: ${first.scheduling} · ${first.carrier} (${first.dock})`
 })
 
-const overallPickPercentage = computed(() => {
-  const done = loads.value.reduce((acc, l) => acc + l.picks_done, 0)
-  const total = loads.value.reduce((acc, l) => acc + l.picks_total, 0)
-  return total > 0 ? Math.round((done / total) * 100) : 0
-})
+function setBodyColor(s: string) {
+  document.body.classList.remove('status-good', 'status-risk', 'status-bad')
+  document.body.classList.add(`status-${s}`)
+}
 
 const fetchData = async () => {
   try {
     const res = await axios.get(API)
-    data.value = res.data
-  } catch (err) {
-    // Fall back smoothly to mock dataset
-    if (!data.value) {
-      data.value = {
-        title: 'Next Day Cut-Off & Loading',
-        status: 'risk',
-        kpis: [],
-        loads: DEFAULT_LOADS
-      }
+    if (res.data?.loads?.length) {
+      rawLoads.value = res.data.loads
     }
+    if (res.data?.status) {
+      status.value = res.data.status
+    }
+    setBodyColor(status.value)
+  } catch (err) {
+    rawLoads.value = DEFAULT_LOADS
+    setBodyColor(status.value)
   }
 }
 
 onMounted(() => {
+  setBodyColor(status.value)
   fetchData()
-  const id = setInterval(fetchData, 6_000)
-  timerInterval = setInterval(() => {
-    currentTime.value = new Date().toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-  }, 1000)
-
-  onBeforeUnmount(() => {
-    clearInterval(id)
-    if (timerInterval) clearInterval(timerInterval)
-  })
+  const id = setInterval(fetchData, 5_000)
+  onBeforeUnmount(() => clearInterval(id))
 })
 
-function urgencyClass(urgency: string) {
-  switch (urgency) {
-    case 'critical': return 'urgency-critical'
-    case 'warning': return 'urgency-warning'
-    case 'upcoming': return 'urgency-upcoming'
-    default: return 'urgency-scheduled'
-  }
+function dialClass(pct: number) {
+  if (pct >= 80) return 'good'
+  if (pct >= 40) return 'warn'
+  return 'bad'
 }
 </script>
 
 <template>
-  <div class="nextday-dashboard">
-    <!-- Header -->
-    <header class="nextday-header">
-      <div class="header-left">
-        <span class="badge-live">LIVE DOCK STATUS</span>
-        <h1>Next Day Progress</h1>
-        <span class="clock-display">{{ currentTime }}</span>
-      </div>
-      <div class="header-kpis">
-        <div class="header-kpi-card highlight">
-          <span class="kpi-title">EERSTVOLGEND VERTREK</span>
-          <span class="kpi-value">{{ nextUpcoming ? `${nextUpcoming.scheduled_time} · ${nextUpcoming.carrier}` : '—' }}</span>
-        </div>
-        <div class="header-kpi-card">
-          <span class="kpi-title">OPEN PICKS</span>
-          <span class="kpi-value">{{ totalRemainingPicks.toLocaleString('nl-NL') }} <small>picks</small></span>
-        </div>
-        <div class="header-kpi-card">
-          <span class="kpi-title">NOG TE LADEN</span>
-          <span class="kpi-value">{{ totalRemainingHds.toLocaleString('nl-NL') }} <small>HDs</small></span>
-        </div>
-        <div class="header-kpi-card">
-          <span class="kpi-title">TOTALE GEREEDHEID</span>
-          <span class="kpi-value">{{ overallPickPercentage }}%</span>
-        </div>
-      </div>
-    </header>
+  <header>Next Day Progress</header>
 
-    <!-- Main Content: Chronological List of Departures -->
-    <main class="loads-container">
+  <main class="nd-main">
+    <!-- Top KPI section: 2 side-by-side KpiCards using the standard component -->
+    <section class="kpi-area nd-kpi-area">
+      <div class="kpis">
+        <KpiCard
+          v-for="k in topKpis"
+          :key="k.label"
+          v-bind="k"
+        />
+      </div>
+    </section>
+
+    <p class="history nd-history">{{ historyText }}</p>
+
+    <!-- Chronological pickup rows from top (earliest) to bottom -->
+    <section class="people-list pickup-list">
       <div
-        v-for="(load, index) in loads"
+        v-for="(load, idx) in sortedLoads"
         :key="load.id"
-        class="load-card"
-        :class="[urgencyClass(load.urgency), { 'is-next': index === 0 }]"
+        class="person-bar pickup-card"
+        :class="{ 'is-next': idx === 0 }"
       >
-        <!-- Next up tag -->
-        <div v-if="index === 0" class="next-tag">
-          ⚡ EERSTVOLGEND VERTREK
+        <!-- Top row of card: Time badge + Carrier + Dock + Dial -->
+        <div class="pickup-top">
+          <div class="pickup-left">
+            <div class="time-badge" :class="{ 'time-urgent': idx === 0 }">
+              <span class="time-main">{{ load.scheduled_time }}</span>
+              <span class="time-dock">{{ load.dock }}</span>
+            </div>
+
+            <div class="carrier-block">
+              <div class="carrier-line">
+                <span class="carrier-title">{{ load.carrier }}</span>
+                <span v-if="idx === 0" class="next-badge">EERSTVOLGEND</span>
+              </div>
+              <div class="meta-line">
+                <span class="meta-code">{{ load.load_code }}</span>
+                <span class="meta-sep">•</span>
+                <span>{{ load.scheduling }}</span>
+                <span class="meta-sep">•</span>
+                <span class="meta-status">{{ load.status }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="dial pickup-dial"
+            :class="dialClass(load.picks_percentage)"
+            :style="{ '--value': Math.round(load.picks_percentage) }"
+          >
+            <span>{{ Math.round(load.picks_percentage) }}%</span>
+          </div>
         </div>
 
-        <div class="card-grid">
-          <!-- Column 1: Time & Dock -->
-          <div class="col-meta">
-            <div class="time-block">
-              <span class="time-primary">{{ load.scheduled_time }}</span>
-              <span class="time-window">{{ load.scheduling }}</span>
-            </div>
-            <div class="dock-badge">{{ load.dock }}</div>
-          </div>
-
-          <!-- Column 2: Carrier & Load ID -->
-          <div class="col-carrier">
-            <div class="carrier-name">{{ load.carrier }}</div>
-            <div class="load-code">
-              <span class="code-pill">{{ load.load_code }}</span>
-              <span class="status-pill" :class="'status-' + load.urgency">{{ load.status }}</span>
-            </div>
-          </div>
-
-          <!-- Column 3: Pick Batch Progress (Yellow/Amber) -->
-          <div class="col-progress pick-progress">
-            <div class="progress-labels">
-              <span class="prog-title">
-                <span class="dot-indicator dot-pick"></span>
-                Pick Batch
-              </span>
-              <span class="prog-values">
-                <strong>{{ load.picks_done }}</strong> / {{ load.picks_total }} picks
-                <span class="pct-badge">{{ Math.round(load.picks_percentage) }}%</span>
+        <!-- Bottom row of card: 2 side-by-side progress bars (Pick Batch & Laden HDs) -->
+        <div class="pickup-bars">
+          <!-- Bar 1: Pick Batch (Amber/Gold like Reflex) -->
+          <div class="prog-col">
+            <div class="prog-head">
+              <span class="prog-label">Pick Batch</span>
+              <span class="prog-val">
+                <strong>{{ load.picks_done }}</strong> / {{ load.picks_total }}
+                ({{ Math.round(load.picks_percentage) }}%)
               </span>
             </div>
-            <div class="progress-track">
+            <div class="prog-track">
               <div
-                class="progress-fill fill-pick"
+                class="prog-fill fill-pick"
                 :style="{ width: `${Math.min(100, Math.max(0, load.picks_percentage))}%` }"
               ></div>
             </div>
           </div>
 
-          <!-- Column 4: Loading (HDs) Progress (Blue/Cyan) -->
-          <div class="col-progress load-progress">
-            <div class="progress-labels">
-              <span class="prog-title">
-                <span class="dot-indicator dot-load"></span>
-                Laden (HDs)
-              </span>
-              <span class="prog-values">
-                <strong>{{ load.hds_loaded }}</strong> / {{ load.hds_total }} HDs
-                <span class="pct-badge">{{ Math.round(load.load_percentage) }}%</span>
+          <!-- Bar 2: Laden HDs (Header Blue) -->
+          <div class="prog-col">
+            <div class="prog-head">
+              <span class="prog-label">Laden HDs</span>
+              <span class="prog-val">
+                <strong>{{ load.hds_loaded }}</strong> / {{ load.hds_total }}
+                ({{ Math.round(load.load_percentage) }}%)
               </span>
             </div>
-            <div class="progress-track">
+            <div class="prog-track">
               <div
-                class="progress-fill fill-load"
+                class="prog-fill fill-load"
                 :style="{ width: `${Math.min(100, Math.max(0, load.load_percentage))}%` }"
               ></div>
             </div>
           </div>
         </div>
       </div>
-    </main>
-  </div>
+    </section>
+  </main>
 </template>
 
 <style scoped>
-.nextday-dashboard {
+.nd-main {
+  padding: 1.5vh 2.5vw 2vh 2.5vw;
+}
+
+/* Make the 2 KPI cards compact enough that all 5 pickup moments fit below on 1080x1920 */
+.nd-kpi-area {
+  flex: 0 0 18vh;
+}
+
+.nd-kpi-area :deep(.kpi-card) {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  width: 100vw;
-  background: #0f172a;
-  color: #f8fafc;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  overflow: hidden;
+  justify-content: center;
+  padding: 1.2vh 1.5vw;
+}
+
+.nd-kpi-area :deep(.kpi-value) {
+  font-size: clamp(2.5rem, 9vw, 5.5rem);
+}
+
+.nd-kpi-area :deep(.kpi-title) {
+  font-size: clamp(1.2rem, 3.8vw, 2.4rem);
+}
+
+.nd-kpi-area :deep(.kpi-label) {
+  font-size: clamp(0.85rem, 2vw, 1.4rem);
+}
+
+.nd-history {
+  margin: 1vh 0 0.8vh 0;
+  font-size: clamp(0.95rem, 2.1vw, 1.5rem);
+  font-weight: 600;
+}
+
+.pickup-list {
+  --person-gap: 1.4vh;
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--person-gap);
+  margin-top: 0.6vh;
+}
+
+.pickup-card {
+  height: auto;
+  min-height: 10.5vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: stretch;
+  padding: 1.3vh 2.2vw;
+  background: rgba(232, 240, 250, 0.94);
+  border-radius: 0 0.85rem 0 0;
+  border-left: 1vw solid var(--clr-header);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
   box-sizing: border-box;
 }
 
-/* Header */
-.nextday-header {
-  flex: 0 0 auto;
+.pickup-card.is-next {
+  background: #ffffff;
+  border-left: 1.2vw solid #d6252c;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+}
+
+/* Top part of each pickup card */
+.pickup-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.5vh 2vw;
-  background: #1e293b;
-  border-bottom: 2px solid #334155;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  gap: 1.5vw;
+}
+
+.pickup-left {
+  display: flex;
+  align-items: center;
   gap: 2vw;
+  min-width: 0;
 }
 
-.header-left {
+.time-badge {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 1.2vw;
-}
-
-.header-left h1 {
-  margin: 0;
-  font-size: clamp(1.4rem, 2.2vw, 2.4rem);
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  justify-content: center;
+  background: var(--clr-header);
   color: #ffffff;
+  border-radius: 0.5rem;
+  padding: 0.4vh 1.4vw;
+  min-width: 12vw;
+  text-align: center;
+  flex-shrink: 0;
 }
 
-.badge-live {
-  background: #ef4444;
-  color: white;
-  font-size: 0.75rem;
+.time-badge.time-urgent {
+  background: #d6252c;
+}
+
+.time-main {
+  font-size: clamp(1.3rem, 3.4vw, 2.3rem);
   font-weight: 800;
-  padding: 4px 8px;
-  border-radius: 6px;
-  letter-spacing: 0.05em;
-  animation: pulse-badge 2s infinite;
+  line-height: 1.05;
 }
 
-@keyframes pulse-badge {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+.time-dock {
+  font-size: clamp(0.7rem, 1.5vw, 1.05rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  opacity: 0.92;
 }
 
-.clock-display {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: clamp(1.1rem, 1.6vw, 1.8rem);
-  color: #94a3b8;
-  font-weight: 600;
-  padding-left: 0.8vw;
-  border-left: 1px solid #475569;
+.carrier-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25vh;
+  min-width: 0;
 }
 
-.header-kpis {
+.carrier-line {
   display: flex;
   align-items: center;
   gap: 1.2vw;
 }
 
-.header-kpi-card {
-  background: #0f172a;
-  border: 1px solid #334155;
-  border-radius: 10px;
-  padding: 0.8vh 1.2vw;
-  display: flex;
-  flex-direction: column;
-  min-width: 140px;
+.carrier-title {
+  font-size: clamp(1.2rem, 3.1vw, 2.1rem);
+  font-weight: 800;
+  color: var(--clr-text-dark);
+  line-height: 1.1;
 }
 
-.header-kpi-card.highlight {
-  border-color: #f59e0b;
-  background: rgba(245, 158, 11, 0.1);
-}
-
-.kpi-title {
-  font-size: 0.68rem;
-  text-transform: uppercase;
+.next-badge {
+  background: #d6252c;
+  color: #ffffff;
+  font-size: clamp(0.65rem, 1.4vw, 0.95rem);
+  font-weight: 800;
+  padding: 0.2vh 0.9vw;
+  border-radius: 999px;
   letter-spacing: 0.05em;
-  color: #94a3b8;
+}
+
+.meta-line {
+  display: flex;
+  align-items: center;
+  gap: 0.8vw;
+  font-size: clamp(0.8rem, 1.8vw, 1.25rem);
+  color: #334155;
   font-weight: 600;
 }
 
-.header-kpi-card.highlight .kpi-title {
-  color: #fbbf24;
-}
-
-.kpi-value {
-  font-size: clamp(1.1rem, 1.5vw, 1.6rem);
-  font-weight: 800;
-  color: #f8fafc;
-  line-height: 1.2;
-  margin-top: 2px;
-}
-
-.kpi-value small {
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: #94a3b8;
-}
-
-/* Loads list */
-.loads-container {
-  flex: 1 1 0;
-  padding: 1.8vh 2vw;
-  display: flex;
-  flex-direction: column;
-  gap: 1.4vh;
-  overflow-y: auto;
-}
-
-.load-card {
-  position: relative;
-  background: #1e293b;
-  border: 1.5px solid #334155;
-  border-radius: 14px;
-  padding: 1.8vh 1.8vw;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-  transition: transform 0.15s ease, border-color 0.15s ease;
-}
-
-.load-card.is-next {
-  border-color: #f59e0b;
-  background: linear-gradient(90deg, rgba(245, 158, 11, 0.08) 0%, rgba(30, 41, 59, 1) 40%);
-  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.18);
-}
-
-.next-tag {
-  position: absolute;
-  top: -10px;
-  left: 20px;
-  background: #f59e0b;
+.meta-code {
+  font-weight: 700;
   color: #0f172a;
-  font-size: 0.72rem;
-  font-weight: 900;
-  padding: 2px 10px;
-  border-radius: 12px;
-  letter-spacing: 0.04em;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
 
-.card-grid {
+.meta-sep {
+  opacity: 0.5;
+}
+
+.meta-status {
+  color: var(--clr-header);
+  font-weight: 700;
+}
+
+.pickup-dial {
+  --size: 4.6vh;
+  flex-shrink: 0;
+  font-size: clamp(0.85rem, 1.9vw, 1.3rem);
+}
+
+/* Bottom part of each pickup card: dual progress bars */
+.pickup-bars {
   display: grid;
-  grid-template-columns: 140px 1.4fr 1.6fr 1.6fr;
-  align-items: center;
-  gap: 2vw;
+  grid-template-columns: 1fr 1fr;
+  gap: 2.5vw;
+  width: 100%;
+  margin-top: 0.4vh;
 }
 
-/* Col 1: Time */
-.col-meta {
+.prog-col {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0.35vh;
 }
 
-.time-primary {
-  font-size: clamp(1.8rem, 2.6vw, 3rem);
-  font-weight: 800;
-  line-height: 1;
-  color: #ffffff;
-  font-family: ui-monospace, SFMono-Regular, monospace;
-}
-
-.time-window {
-  font-size: 0.75rem;
-  color: #94a3b8;
-  white-space: nowrap;
-}
-
-.dock-badge {
-  display: inline-block;
-  align-self: flex-start;
-  margin-top: 4px;
-  background: #334155;
-  color: #cbd5e1;
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 6px;
-  letter-spacing: 0.04em;
-}
-
-/* Col 2: Carrier */
-.col-carrier {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.carrier-name {
-  font-size: clamp(1.2rem, 1.8vw, 2rem);
-  font-weight: 700;
-  color: #ffffff;
-  line-height: 1.2;
-}
-
-.load-code {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.code-pill {
-  font-family: ui-monospace, SFMono-Regular, monospace;
-  font-size: 0.8rem;
-  background: rgba(255, 255, 255, 0.08);
-  padding: 2px 8px;
-  border-radius: 6px;
-  color: #cbd5e1;
-}
-
-.status-pill {
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 6px;
-}
-
-.status-critical {
-  background: rgba(239, 68, 68, 0.2);
-  color: #fca5a5;
-  border: 1px solid rgba(239, 68, 68, 0.4);
-}
-
-.status-warning {
-  background: rgba(245, 158, 11, 0.2);
-  color: #fde68a;
-  border: 1px solid rgba(245, 158, 11, 0.4);
-}
-
-.status-upcoming {
-  background: rgba(59, 130, 246, 0.2);
-  color: #93c5fd;
-  border: 1px solid rgba(59, 130, 246, 0.4);
-}
-
-.status-scheduled {
-  background: rgba(148, 163, 184, 0.2);
-  color: #cbd5e1;
-}
-
-/* Col 3 & 4: Progress Bars */
-.col-progress {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.progress-labels {
+.prog-head {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  font-size: 0.85rem;
+  align-items: baseline;
+  font-size: clamp(0.75rem, 1.7vw, 1.2rem);
+  color: var(--clr-text-dark);
 }
 
-.prog-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.prog-label {
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #1e293b;
+}
+
+.prog-val {
+  font-variant-numeric: tabular-nums;
   font-weight: 600;
-  color: #cbd5e1;
+  color: #334155;
 }
 
-.dot-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.prog-val strong {
+  font-weight: 800;
+  color: #0f172a;
 }
 
-.dot-pick {
-  background: #f59e0b;
-  box-shadow: 0 0 6px rgba(245, 158, 11, 0.8);
-}
-
-.dot-load {
-  background: #0ea5e9;
-  box-shadow: 0 0 6px rgba(14, 165, 233, 0.8);
-}
-
-.prog-values {
-  color: #94a3b8;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.prog-values strong {
-  color: #ffffff;
-}
-
-.pct-badge {
-  background: #334155;
-  color: #f8fafc;
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 1px 6px;
-  border-radius: 4px;
-}
-
-.progress-track {
-  height: 18px;
-  background: #0f172a;
-  border-radius: 10px;
+.prog-track {
+  width: 100%;
+  height: 1.35vh;
+  min-height: 10px;
+  background: #cbd5e1;
+  border-radius: 999px;
   overflow: hidden;
-  border: 1px solid #334155;
-  position: relative;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
-.progress-fill {
+.prog-fill {
   height: 100%;
-  border-radius: 10px;
+  border-radius: 999px;
   transition: width 0.4s ease;
 }
 
 .fill-pick {
-  background: linear-gradient(90deg, #d97706 0%, #f59e0b 100%);
-  box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+  background: linear-gradient(90deg, #f59e0b 0%, #eab308 100%);
 }
 
 .fill-load {
-  background: linear-gradient(90deg, #0284c7 0%, #38bdf8 100%);
-  box-shadow: 0 0 10px rgba(14, 165, 233, 0.4);
-}
-
-/* Responsiveness for smaller screens */
-@media (max-width: 900px) {
-  .card-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  .nextday-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
+  background: linear-gradient(90deg, #004580 0%, #0284c7 100%);
 }
 </style>

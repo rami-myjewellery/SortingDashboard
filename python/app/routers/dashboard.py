@@ -309,18 +309,21 @@ async def get_next_day_progress():
     total_hds_loaded = sum(l["hds_loaded"] for l in NEXT_DAY_LOADS)
     remaining_picks = total_picks_target - total_picks_done
     remaining_hds = total_hds_target - total_hds_loaded
-    overall_pick_pct = round((total_picks_done / total_picks_target * 100), 1) if total_picks_target else 0
+    first_load = NEXT_DAY_LOADS[0]
 
     return Dashboard(
-        title="Next Day Cut-Off & Loading",
-        status="risk" if any(l["urgency"] == "critical" for l in NEXT_DAY_LOADS) else "good",
+        title="Next Day Progress",
+        status="good",
         kpis=[
-            Kpi(label="Next Cut-off", value=18.0, unit="18:00 (B2CEU)"),
-            Kpi(label="Open Picks", value=remaining_picks, unit="picks"),
-            Kpi(label="Open HDs", value=remaining_hds, unit="HDs"),
-            Kpi(label="Picks Ready", value=overall_pick_pct, unit="%"),
+            Kpi(
+                label=f"Eerstvolgend: {first_load['scheduled_time']} ({first_load['carrier']})",
+                value=round(first_load["picks_percentage"]),
+                unit="% gepickt",
+            ),
+            Kpi(label="Openstaande Picks", value=remaining_picks, unit="picks"),
+            Kpi(label="Nog te laden op dock", value=remaining_hds, unit="HDs"),
         ],
-        historyText="Reflex Dock Management: Geordend van eerstvolgend naar later vertrekmoment",
+        historyText=f"Eerstvolgend vertrek: {first_load['scheduling']} · {first_load['load_code']} ({first_load['dock']})",
         people=[],
         idleThreshold=60,
         loads=NEXT_DAY_LOADS,
