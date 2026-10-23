@@ -301,6 +301,30 @@ NEXT_DAY_LOADS = [
 ]
 
 
+def _compute_next_day_status(loads: list[dict]) -> str:
+    """
+    Determine dashboard status ('good', 'risk', 'bad') based on the earliest
+    upcoming pickup moment (including all loads sharing that same earliest time).
+    """
+    if not loads:
+        return "good"
+
+    def _norm_time(t: str) -> int:
+        h, m = map(int, t.split(":"))
+        return (h + 24) * 60 + m if h < 6 else h * 60 + m
+
+    sorted_loads = sorted(loads, key=lambda l: _norm_time(l["scheduled_time"]))
+    earliest_time = sorted_loads[0]["scheduled_time"]
+    earliest_group = [l for l in sorted_loads if l["scheduled_time"] == earliest_time]
+
+    min_pct = min(l["picks_percentage"] for l in earliest_group)
+    if min_pct >= 80:
+        return "good"
+    if min_pct >= 40:
+        return "risk"
+    return "bad"
+
+
 @router.get("/NextDayProgress", response_model=Dashboard)
 async def get_next_day_progress():
     total_picks_done = sum(l["picks_done"] for l in NEXT_DAY_LOADS)
@@ -310,10 +334,11 @@ async def get_next_day_progress():
     remaining_picks = total_picks_target - total_picks_done
     remaining_hds = total_hds_target - total_hds_loaded
     first_load = NEXT_DAY_LOADS[0]
+    status = _compute_next_day_status(NEXT_DAY_LOADS)
 
     return Dashboard(
         title="Next Day Progress",
-        status="good",
+        status=status,
         kpis=[
             Kpi(
                 label=f"Eerstvolgend: {first_load['scheduled_time']} ({first_load['carrier']})",

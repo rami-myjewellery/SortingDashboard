@@ -1,6 +1,6 @@
 <!-- src/views/NextDayProgress.vue -->
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watchEffect, onMounted, onBeforeUnmount } from 'vue'
 import axios from 'axios'
 import KpiCard from '@/components/KpiCard.vue'
 
@@ -97,7 +97,7 @@ const DEFAULT_LOADS: DockLoad[] = [
   {
     id: 'load-inthq',
     load_code: '23/10/26 INTHQ',
-    carrier: 'Internal HQ',
+    carrier: 'Internal HQ Transfer',
     dock: 'DOCK-008',
     work_mode: 'LOA - LOAD',
     scheduling: '00h00 - 01h00',
@@ -114,7 +114,6 @@ const DEFAULT_LOADS: DockLoad[] = [
 ]
 
 const rawLoads = ref<DockLoad[]>(DEFAULT_LOADS)
-const status = ref<'good' | 'risk' | 'bad'>('good')
 
 // Chronological sort from earliest upcoming departure to latest
 const sortedLoads = computed<DockLoad[]>(() => {
@@ -125,6 +124,27 @@ const sortedLoads = computed<DockLoad[]>(() => {
     }
     return normTime(a.scheduled_time) - normTime(b.scheduled_time)
   })
+})
+
+// Earliest scheduled_time (can include 1, 2 or more simultaneous pickups)
+const earliestTime = computed(() => sortedLoads.value[0]?.scheduled_time ?? null)
+
+const earliestLoads = computed(() => {
+  if (!earliestTime.value) return []
+  return sortedLoads.value.filter((l) => l.scheduled_time === earliestTime.value)
+})
+
+function isEarliestMoment(load: DockLoad) {
+  return earliestTime.value !== null && load.scheduled_time === earliestTime.value
+}
+
+// Background status reflects the earliest pickup moment(s)
+const computedStatus = computed<'good' | 'risk' | 'bad'>(() => {
+  if (!earliestLoads.value.length) return 'good'
+  const minPct = Math.min(...earliestLoads.value.map((l) => l.picks_percentage))
+  if (minPct >= 80) return 'good'
+  if (minPct >= 40) return 'risk'
+  return 'bad'
 })
 
 const topKpis = computed(() => {
@@ -145,9 +165,10 @@ const topKpis = computed(() => {
 })
 
 const historyText = computed(() => {
-  const first = sortedLoads.value[0]
-  if (!first) return ''
-  return `Eerstvolgende pickup: ${first.scheduling} · ${first.carrier} (${first.dock})`
+  if (!earliestLoads.value.length) return ''
+  const first = earliestLoads.value[0]
+  const carriers = earliestLoads.value.map((l) => `${l.carrier} (${l.dock})`).join(' & ')
+  return `Eerstvolgende pickup: ${first.scheduling} · ${carriers}`
 })
 
 function setBodyColor(s: string) {
@@ -155,24 +176,23 @@ function setBodyColor(s: string) {
   document.body.classList.add(`status-${s}`)
 }
 
+watchEffect(() => {
+  setBodyColor(computedStatus.value)
+})
+
 const fetchData = async () => {
   try {
     const res = await axios.get(API)
     if (res.data?.loads?.length) {
       rawLoads.value = res.data.loads
     }
-    if (res.data?.status) {
-      status.value = res.data.status
-    }
-    setBodyColor(status.value)
   } catch (err) {
     rawLoads.value = DEFAULT_LOADS
-    setBodyColor(status.value)
   }
 }
 
 onMounted(() => {
-  setBodyColor(status.value)
+  setBodyColor(computedStatus.value)
   fetchData()
   const id = setInterval(fetchData, 5_000)
   onBeforeUnmount(() => clearInterval(id))
@@ -205,15 +225,21 @@ function dialClass(pct: number) {
     <!-- Chronological pickup rows from top (earliest) to bottom -->
     <section class="people-list pickup-list">
       <div
-        v-for="(load, idx) in sortedLoads"
+        v-for="load in sortedLoads"
         :key="load.id"
         class="person-bar pickup-card"
-        :class="{ 'is-next': idx === 0 }"
+        :class="[
+          { 'is-next': isEarliestMoment(load) },
+          `card-${dialClass(load.picks_percentage)}`
+        ]"
       >
         <!-- Top row of card: Time badge + Carrier + Dock + Dial -->
         <div class="pickup-top">
           <div class="pickup-left">
-            <div class="time-badge" :class="{ 'time-urgent': idx === 0 }">
+            <div
+              class="time-badge"
+              :class="isEarliestMoment(load) ? `badge-${dialClass(load.picks_percentage)}` : ''"
+            >
               <span class="time-main">{{ load.scheduled_time }}</span>
               <span class="time-dock">{{ load.dock }}</span>
             </div>
@@ -221,7 +247,13 @@ function dialClass(pct: number) {
             <div class="carrier-block">
               <div class="carrier-line">
                 <span class="carrier-title">{{ load.carrier }}</span>
-                <span v-if="idx === 0" class="next-badge">EERSTVOLGEND</span>
+                <span
+                  v-if="isEarliestMoment(load)"
+                  class="next-badge"
+                  :class="`badge-${dialClass(load.picks_percentage)}`"
+                >
+                  EERSTVOLGEND
+                </span>
               </div>
               <div class="meta-line">
                 <span class="meta-code">{{ load.load_code }}</span>
@@ -288,7 +320,6 @@ function dialClass(pct: number) {
   padding: 1.5vh 2.5vw 2vh 2.5vw;
 }
 
-/* Make the 2 KPI cards compact enough that all 5 pickup moments fit below on 1080x1920 */
 .nd-kpi-area {
   flex: 0 0 18vh;
 }
@@ -344,8 +375,19 @@ function dialClass(pct: number) {
 
 .pickup-card.is-next {
   background: #ffffff;
-  border-left: 1.2vw solid #d6252c;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+}
+
+.pickup-card.is-next.card-good {
+  border-left: 1.2vw solid #0b7c4b;
+}
+
+.pickup-card.is-next.card-warn {
+  border-left: 1.2vw solid #ff9c2a;
+}
+
+.pickup-card.is-next.card-bad {
+  border-left: 1.2vw solid #d6252c;
 }
 
 /* Top part of each pickup card */
@@ -377,8 +419,16 @@ function dialClass(pct: number) {
   flex-shrink: 0;
 }
 
-.time-badge.time-urgent {
-  background: #d6252c;
+.badge-good {
+  background: #0b7c4b !important;
+}
+
+.badge-warn {
+  background: #ff9c2a !important;
+}
+
+.badge-bad {
+  background: #d6252c !important;
 }
 
 .time-main {
@@ -415,7 +465,7 @@ function dialClass(pct: number) {
 }
 
 .next-badge {
-  background: #d6252c;
+  background: #0b7c4b;
   color: #ffffff;
   font-size: clamp(0.65rem, 1.4vw, 0.95rem);
   font-weight: 800;
