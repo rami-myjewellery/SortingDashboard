@@ -32,3 +32,4 @@ class Dashboard(BaseModel):
     people: List[Person]
     idleThreshold: int = 60
     kpi_state: Optional[Dict] = None
+    loads: Optional[List[Dict]] = None

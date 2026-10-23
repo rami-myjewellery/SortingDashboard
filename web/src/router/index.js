@@ -8,8 +8,12 @@ import InboundAndBulk from '../views/InboundAndBulk.vue'
 import Returns from '../views/Returns.vue'
 import Picking from "@/views/Picking.vue";
 import Replenishment from "@/views/Replenishment.vue";
+import NextDayProgress from "@/views/NextDayProgress.vue";
 
 const routes = [
+    { path: '/NextDayProgress',            component: NextDayProgress },
+    { path: '/NextDayProgress/userKPI',    component: NextDayProgress },
+
     { path: '/GeekPicking',            component: GeekPicking },
     { path: '/GeekPicking/userKPI',    component: GeekPicking },
 

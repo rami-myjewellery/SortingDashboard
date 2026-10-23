@@ -209,3 +209,119 @@ async def get_error_lanes():
 async def get_sorting():
     # Use the live dashboard from the in-memory DB
     return await _build_dashboard_response("default")
+
+
+# ── Next Day Progress (Mock dataset based on Reflex Dock Management) ────────
+NEXT_DAY_LOADS = [
+    {
+        "id": "load-b2ceu",
+        "load_code": "23/10/26 B2CEU",
+        "carrier": "B2C Europe",
+        "dock": "DOCK-003",
+        "work_mode": "LOA - LOAD",
+        "scheduling": "18h00 - 19h00",
+        "scheduled_time": "18:00",
+        "status": "Carrier expected",
+        "picks_done": 94,
+        "picks_total": 104,
+        "picks_percentage": 90.4,
+        "hds_loaded": 0,
+        "hds_total": 48,
+        "load_percentage": 0.0,
+        "urgency": "critical",
+    },
+    {
+        "id": "load-pnlpar",
+        "load_code": "23/10/26 PNLPAR",
+        "carrier": "PostNL Pakketten",
+        "dock": "DOCK-003",
+        "work_mode": "LOA - LOAD",
+        "scheduling": "23h00 - 23h45",
+        "scheduled_time": "23:00",
+        "status": "Picking in progress",
+        "picks_done": 582,
+        "picks_total": 970,
+        "picks_percentage": 60.0,
+        "hds_loaded": 0,
+        "hds_total": 64,
+        "load_percentage": 0.0,
+        "urgency": "warning",
+    },
+    {
+        "id": "load-pnleur",
+        "load_code": "23/10/26 PNLEUR",
+        "carrier": "PostNL Europe",
+        "dock": "DOCK-004",
+        "work_mode": "LOA - LOAD",
+        "scheduling": "23h00 - 23h45",
+        "scheduled_time": "23:00",
+        "status": "Picking in progress",
+        "picks_done": 296,
+        "picks_total": 510,
+        "picks_percentage": 58.0,
+        "hds_loaded": 0,
+        "hds_total": 36,
+        "load_percentage": 0.0,
+        "urgency": "warning",
+    },
+    {
+        "id": "load-dhlfy",
+        "load_code": "23/10/26 DHLFY",
+        "carrier": "DHL Parcel",
+        "dock": "DOCK-005",
+        "work_mode": "LOA - LOAD",
+        "scheduling": "23h30 - 00h30",
+        "scheduled_time": "23:30",
+        "status": "Picking started",
+        "picks_done": 145,
+        "picks_total": 520,
+        "picks_percentage": 27.9,
+        "hds_loaded": 0,
+        "hds_total": 42,
+        "load_percentage": 0.0,
+        "urgency": "upcoming",
+    },
+    {
+        "id": "load-inthq",
+        "load_code": "23/10/26 INTHQ",
+        "carrier": "Internal HQ Transfer",
+        "dock": "DOCK-008",
+        "work_mode": "LOA - LOAD",
+        "scheduling": "00h00 - 01h00",
+        "scheduled_time": "00:00",
+        "status": "Scheduled",
+        "picks_done": 12,
+        "picks_total": 150,
+        "picks_percentage": 8.0,
+        "hds_loaded": 0,
+        "hds_total": 24,
+        "load_percentage": 0.0,
+        "urgency": "scheduled",
+    },
+]
+
+
+@router.get("/NextDayProgress", response_model=Dashboard)
+async def get_next_day_progress():
+    total_picks_done = sum(l["picks_done"] for l in NEXT_DAY_LOADS)
+    total_picks_target = sum(l["picks_total"] for l in NEXT_DAY_LOADS)
+    total_hds_target = sum(l["hds_total"] for l in NEXT_DAY_LOADS)
+    total_hds_loaded = sum(l["hds_loaded"] for l in NEXT_DAY_LOADS)
+    remaining_picks = total_picks_target - total_picks_done
+    remaining_hds = total_hds_target - total_hds_loaded
+    overall_pick_pct = round((total_picks_done / total_picks_target * 100), 1) if total_picks_target else 0
+
+    return Dashboard(
+        title="Next Day Cut-Off & Loading",
+        status="risk" if any(l["urgency"] == "critical" for l in NEXT_DAY_LOADS) else "good",
+        kpis=[
+            Kpi(label="Next Cut-off", value=18.0, unit="18:00 (B2CEU)"),
+            Kpi(label="Open Picks", value=remaining_picks, unit="picks"),
+            Kpi(label="Open HDs", value=remaining_hds, unit="HDs"),
+            Kpi(label="Picks Ready", value=overall_pick_pct, unit="%"),
+        ],
+        historyText="Reflex Dock Management: Geordend van eerstvolgend naar later vertrekmoment",
+        people=[],
+        idleThreshold=60,
+        loads=NEXT_DAY_LOADS,
+    )
