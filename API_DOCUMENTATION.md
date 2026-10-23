@@ -33,6 +33,7 @@ Alle dashboard-endpoints zijn `GET` requests onder het pad `/dashboard/<Afdeling
 | `GET /dashboard/Sorting` | **Sorteermachine (Sorting)** | Vullingsgraad van de sorteerbanden (Error belt, Single belt, Multi belt). |
 | `GET /dashboard/Returns` | **Retourenverwerking** | Retourvolume, aantal verwerkte retouritems en behandeltijd. |
 | `GET /dashboard/ErrorLanes` | **Foutstraten & Storingen** | Error rate percentage, opgeloste fouten en openstaande fouten. |
+| `GET /dashboard/NextDayProgress` | **Next Day Cut-Off & Loading** | Chronologische laad- & vertrekplanning (Reflex docks), pick batch voortgang en HD laadstatus. |
 
 ---
 
@@ -55,6 +56,13 @@ curl -X GET "https://sorting-dashboard-api-208732756826.europe-west4.run.app/das
 ### Voorbeeld 3: Replenishment ophalen
 ```bash
 curl -X GET "https://sorting-dashboard-api-208732756826.europe-west4.run.app/dashboard/Replenishment" \
+  -H "x-api-key: wh_live_GAqd6uJQ_j5UdXY4HLC7lZXyxXn_9u0m2evCh2kQe30" \
+  -H "Accept: application/json"
+```
+
+### Voorbeeld 4: Next Day Progress (Reflex Docks) ophalen
+```bash
+curl -X GET "https://sorting-dashboard-api-208732756826.europe-west4.run.app/dashboard/NextDayProgress" \
   -H "x-api-key: wh_live_GAqd6uJQ_j5UdXY4HLC7lZXyxXn_9u0m2evCh2kQe30" \
   -H "Accept: application/json"
 ```
