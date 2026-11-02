@@ -33,7 +33,7 @@ Alle dashboard-endpoints zijn `GET` requests onder het pad `/dashboard/<Afdeling
 | `GET /dashboard/Sorting` | **Sorteermachine (Sorting)** | Vullingsgraad van de sorteerbanden (Error belt, Single belt, Multi belt). |
 | `GET /dashboard/Returns` | **Retourenverwerking** | Retourvolume, aantal verwerkte retouritems en behandeltijd. |
 | `GET /dashboard/ErrorLanes` | **Foutstraten & Storingen** | Error rate percentage, opgeloste fouten en openstaande fouten. |
-| `GET /dashboard/NextDayProgress` | **Next Day Progress (Reflex Loads)** | Chronologische laad- & vertrekplanning (`PNLMAI`, `PNLPAR`, `DHLFY`), aantal geconfirmde picks, totaal aantal picks en voortgangspercentage (`pick_pct`). |
+| `GET /dashboard/NextDayProgress` | **Next Day Progress (Reflex Loads)** | Chronologische laad- & vertrekplanning (`PNLMAI`, `PNLMA2`, `PNLPAR`, `DHLFY`), aantal geconfirmde picks, totaal aantal picks en voortgangspercentage (`pick_pct`). |
 
 ---
 

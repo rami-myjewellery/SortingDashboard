@@ -39,7 +39,7 @@ LEFT JOIN hlprelp pv
 WHERE ch.cganca = to_number(to_char(sysdate, 'YY'))
     AND ch.cgmoca = to_number(to_char(sysdate, 'MM'))
     AND ch.cgjoca = to_number(to_char(sysdate, 'DD'))
-    AND trim(ch.cgccha) IN ('PNLPAR', 'PNLMAI', 'DHLFY')
+    AND ch.cgccha IN ('PNLPAR', 'PNLMAI', 'PNLMA2', 'DHLFY')
 GROUP BY
     ch.cgcdpo, ch.cganca, ch.cgmoca, ch.cgjoca, ch.cgccha,
     ch.cglcha, ch.cghdch,

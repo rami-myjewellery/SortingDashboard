@@ -234,7 +234,8 @@ def _compute_next_day_status(loads: list[dict]) -> str:
     earliest_time = sorted_loads[0].get("scheduled_time")
     earliest_group = [l for l in sorted_loads if l.get("scheduled_time") == earliest_time]
 
-    min_pct = min(float(l.get("pick_pct", l.get("picks_percentage", 0))) for l in earliest_group)
+    active_group = [l for l in earliest_group if int(l.get("picks_total", 0)) > 0] or earliest_group
+    min_pct = min(float(l.get("pick_pct", l.get("picks_percentage", 0))) for l in active_group)
     if min_pct > 85:
         return "good"
     if min_pct >= 50:

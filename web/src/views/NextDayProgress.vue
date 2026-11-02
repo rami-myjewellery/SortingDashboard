@@ -22,7 +22,7 @@ interface DockLoad {
 }
 
 const API = 'https://sorting-dashboard-api-208732756826.europe-west4.run.app/dashboard/NextDayProgress'
-const ALLOWED_LOAD_CODES = new Set(['PNLMAI', 'PNLPAR', 'DHLFY'])
+const ALLOWED_LOAD_CODES = new Set(['PNLMAI', 'PNLMA2', 'PNLPAR', 'DHLFY'])
 
 // ── Default Dataset matching the Reflex DBeaver query (PNLMAI, PNLPAR, DHLFY) ──
 const DEFAULT_LOADS: DockLoad[] = [
@@ -155,7 +155,9 @@ function dialClass(pct: number): 'good' | 'warn' | 'bad' {
 // Groen > 85%, Oranje 50%-85%, Rood < 50%
 const computedStatus = computed<'good' | 'risk' | 'bad'>(() => {
   if (!earliestLoads.value.length) return 'good'
-  const minPct = Math.min(...earliestLoads.value.map((l) => l.pick_pct))
+  const activeEarliest = earliestLoads.value.filter((l) => l.picks_total > 0)
+  const group = activeEarliest.length ? activeEarliest : earliestLoads.value
+  const minPct = Math.min(...group.map((l) => l.pick_pct))
   if (minPct > greenThreshold.value) return 'good'
   if (minPct >= orangeThreshold.value) return 'risk'
   return 'bad'
@@ -349,7 +351,7 @@ onMounted(() => {
 }
 
 .pickup-list {
-  --person-gap: 2.2vh;
+  --person-gap: 1.6vh;
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
@@ -359,12 +361,12 @@ onMounted(() => {
 
 .pickup-card {
   height: auto !important;
-  min-height: 14.5vh;
+  min-height: 12.2vh;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   align-items: stretch;
-  padding: 2vh 2.5vw;
+  padding: 1.6vh 2.4vw;
   background: rgba(232, 240, 250, 0.95);
   border-radius: 0 1rem 0 0;
   border-left: 1.2vw solid var(--clr-header);
