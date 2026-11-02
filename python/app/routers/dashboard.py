@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException
 from app.models import Dashboard, Kpi
 from app.data.store import get_db
 from app.services.manual_finish import get_manual_finish_metrics
+from app.services.next_day_progress import get_next_day_loads
 from datadog_logger import log_datadog_event
 
 logger = logging.getLogger(__name__)
@@ -211,145 +212,58 @@ async def get_sorting():
     return await _build_dashboard_response("default")
 
 
-# ── Next Day Progress (Mock dataset based on Reflex Dock Management) ────────
-NEXT_DAY_LOADS = [
-    {
-        "id": "load-b2ceu",
-        "load_code": "23/10/26 B2CEU",
-        "carrier": "B2C Europe",
-        "dock": "DOCK-003",
-        "work_mode": "LOA - LOAD",
-        "scheduling": "18h00 - 19h00",
-        "scheduled_time": "18:00",
-        "status": "Carrier expected",
-        "picks_done": 94,
-        "picks_total": 104,
-        "picks_percentage": 90.4,
-        "hds_loaded": 0,
-        "hds_total": 48,
-        "load_percentage": 0.0,
-        "urgency": "critical",
-    },
-    {
-        "id": "load-pnlpar",
-        "load_code": "23/10/26 PNLPAR",
-        "carrier": "PostNL Pakketten",
-        "dock": "DOCK-003",
-        "work_mode": "LOA - LOAD",
-        "scheduling": "23h00 - 23h45",
-        "scheduled_time": "23:00",
-        "status": "Picking in progress",
-        "picks_done": 582,
-        "picks_total": 970,
-        "picks_percentage": 60.0,
-        "hds_loaded": 0,
-        "hds_total": 64,
-        "load_percentage": 0.0,
-        "urgency": "warning",
-    },
-    {
-        "id": "load-pnleur",
-        "load_code": "23/10/26 PNLEUR",
-        "carrier": "PostNL Europe",
-        "dock": "DOCK-004",
-        "work_mode": "LOA - LOAD",
-        "scheduling": "23h00 - 23h45",
-        "scheduled_time": "23:00",
-        "status": "Picking in progress",
-        "picks_done": 296,
-        "picks_total": 510,
-        "picks_percentage": 58.0,
-        "hds_loaded": 0,
-        "hds_total": 36,
-        "load_percentage": 0.0,
-        "urgency": "warning",
-    },
-    {
-        "id": "load-dhlfy",
-        "load_code": "23/10/26 DHLFY",
-        "carrier": "DHL Parcel",
-        "dock": "DOCK-005",
-        "work_mode": "LOA - LOAD",
-        "scheduling": "23h30 - 00h30",
-        "scheduled_time": "23:30",
-        "status": "Picking started",
-        "picks_done": 145,
-        "picks_total": 520,
-        "picks_percentage": 27.9,
-        "hds_loaded": 0,
-        "hds_total": 42,
-        "load_percentage": 0.0,
-        "urgency": "upcoming",
-    },
-    {
-        "id": "load-inthq",
-        "load_code": "23/10/26 INTHQ",
-        "carrier": "Internal HQ Transfer",
-        "dock": "DOCK-008",
-        "work_mode": "LOA - LOAD",
-        "scheduling": "00h00 - 01h00",
-        "scheduled_time": "00:00",
-        "status": "Scheduled",
-        "picks_done": 12,
-        "picks_total": 150,
-        "picks_percentage": 8.0,
-        "hds_loaded": 0,
-        "hds_total": 24,
-        "load_percentage": 0.0,
-        "urgency": "scheduled",
-    },
-]
-
-
+# ── Next Day Progress (Live Reflex query for PNLMAI, PNLPAR, DHLFY) ─────────
 def _compute_next_day_status(loads: list[dict]) -> str:
     """
     Determine dashboard status ('good', 'risk', 'bad') based on the earliest
-    upcoming pickup moment (including all loads sharing that same earliest time).
+    upcoming pickup moment (including all loads sharing that same earliest time):
+      - Groen ('good'): > 85%
+      - Oranje ('risk'): 50% - 85%
+      - Rood ('bad'): < 50%
     """
     if not loads:
         return "good"
 
     def _norm_time(t: str) -> int:
-        h, m = map(int, t.split(":"))
+        parts = t.split(":")
+        h = int(parts[0]) if parts else 0
+        m = int(parts[1]) if len(parts) > 1 else 0
         return (h + 24) * 60 + m if h < 6 else h * 60 + m
 
-    sorted_loads = sorted(loads, key=lambda l: _norm_time(l["scheduled_time"]))
-    earliest_time = sorted_loads[0]["scheduled_time"]
-    earliest_group = [l for l in sorted_loads if l["scheduled_time"] == earliest_time]
+    sorted_loads = sorted(loads, key=lambda l: _norm_time(str(l.get("scheduled_time", "00:00"))))
+    earliest_time = sorted_loads[0].get("scheduled_time")
+    earliest_group = [l for l in sorted_loads if l.get("scheduled_time") == earliest_time]
 
-    min_pct = min(l["picks_percentage"] for l in earliest_group)
-    if min_pct >= 80:
+    min_pct = min(float(l.get("pick_pct", l.get("picks_percentage", 0))) for l in earliest_group)
+    if min_pct > 85:
         return "good"
-    if min_pct >= 40:
+    if min_pct >= 50:
         return "risk"
     return "bad"
 
 
 @router.get("/NextDayProgress", response_model=Dashboard)
 async def get_next_day_progress():
-    total_picks_done = sum(l["picks_done"] for l in NEXT_DAY_LOADS)
-    total_picks_target = sum(l["picks_total"] for l in NEXT_DAY_LOADS)
-    total_hds_target = sum(l["hds_total"] for l in NEXT_DAY_LOADS)
-    total_hds_loaded = sum(l["hds_loaded"] for l in NEXT_DAY_LOADS)
-    remaining_picks = total_picks_target - total_picks_done
-    remaining_hds = total_hds_target - total_hds_loaded
-    first_load = NEXT_DAY_LOADS[0]
-    status = _compute_next_day_status(NEXT_DAY_LOADS)
+    loads = await get_next_day_loads()
+    total_picks_confirmed = sum(int(l.get("picks_confirmed", l.get("picks_done", 0))) for l in loads)
+    total_picks_target = sum(int(l.get("picks_total", 0)) for l in loads)
+    remaining_picks = max(0, total_picks_target - total_picks_confirmed)
+    first_load = loads[0] if loads else {}
+    status = _compute_next_day_status(loads)
+
+    first_name = first_load.get("load_designation") or first_load.get("load_code") or "—"
+    first_time = first_load.get("scheduled_time") or "—"
+    first_dock = first_load.get("dock") or "—"
 
     return Dashboard(
         title="Next Day Progress",
         status=status,
         kpis=[
-            Kpi(
-                label=f"Eerstvolgend: {first_load['scheduled_time']} ({first_load['carrier']})",
-                value=round(first_load["picks_percentage"]),
-                unit="% gepickt",
-            ),
             Kpi(label="Openstaande Picks", value=remaining_picks, unit="picks"),
-            Kpi(label="Nog te laden op dock", value=remaining_hds, unit="HDs"),
+            Kpi(label="Geconfirmde Picks", value=total_picks_confirmed, unit="picks"),
         ],
-        historyText=f"Eerstvolgend vertrek: {first_load['scheduling']} · {first_load['load_code']} ({first_load['dock']})",
+        historyText=f"Eerstvolgende load: {first_time} · {first_name} ({first_dock})",
         people=[],
         idleThreshold=60,
-        loads=NEXT_DAY_LOADS,
+        loads=loads,
     )

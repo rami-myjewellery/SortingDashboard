@@ -2,131 +2,138 @@
 <script setup lang="ts">
 import { ref, computed, watchEffect, onMounted, onBeforeUnmount } from 'vue'
 import axios from 'axios'
+import { useRoute } from 'vue-router'
 import KpiCard from '@/components/KpiCard.vue'
 
 interface DockLoad {
   id: string
+  load_date?: string
   load_code: string
-  carrier: string
+  load_designation: string
+  carrier?: string
   dock: string
-  work_mode: string
-  scheduling: string
+  planned_loading_time?: string
   scheduled_time: string
-  status: string
-  picks_done: number
+  picks_confirmed: number
+  picks_done?: number
   picks_total: number
-  picks_percentage: number
-  hds_loaded: number
-  hds_total: number
-  load_percentage: number
-  urgency: 'critical' | 'warning' | 'upcoming' | 'scheduled'
+  pick_pct: number
+  picks_percentage?: number
 }
 
 const API = 'https://sorting-dashboard-api-208732756826.europe-west4.run.app/dashboard/NextDayProgress'
+const ALLOWED_LOAD_CODES = new Set(['PNLMAI', 'PNLPAR', 'DHLFY'])
 
-// ── Default Mock Dataset (Reflex Dock Management Screenshot) ─────────────────
+// ── Default Dataset matching the Reflex DBeaver query (PNLMAI, PNLPAR, DHLFY) ──
 const DEFAULT_LOADS: DockLoad[] = [
   {
-    id: 'load-b2ceu',
-    load_code: '23/10/26 B2CEU',
-    carrier: 'B2C Europe',
-    dock: 'DOCK-003',
-    work_mode: 'LOA - LOAD',
-    scheduling: '18h00 - 19h00',
-    scheduled_time: '18:00',
-    status: 'Carrier expected',
-    picks_done: 94,
-    picks_total: 104,
-    picks_percentage: 90.4,
-    hds_loaded: 0,
-    hds_total: 48,
-    load_percentage: 0.0,
-    urgency: 'critical'
+    id: 'load-pnlmai',
+    load_code: 'PNLMAI',
+    load_designation: 'PostNL Brievenbuspakje',
+    dock: 'DOCK002',
+    planned_loading_time: '223000',
+    scheduled_time: '22:30',
+    picks_confirmed: 412,
+    picks_total: 460,
+    pick_pct: 90
   },
   {
     id: 'load-pnlpar',
-    load_code: '23/10/26 PNLPAR',
-    carrier: 'PostNL Pakketten',
-    dock: 'DOCK-003',
-    work_mode: 'LOA - LOAD',
-    scheduling: '23h00 - 23h45',
+    load_code: 'PNLPAR',
+    load_designation: 'PostNL Pakketten',
+    dock: 'DOCK003',
+    planned_loading_time: '230000',
     scheduled_time: '23:00',
-    status: 'Picking in progress',
-    picks_done: 582,
+    picks_confirmed: 582,
     picks_total: 970,
-    picks_percentage: 60.0,
-    hds_loaded: 0,
-    hds_total: 64,
-    load_percentage: 0.0,
-    urgency: 'warning'
-  },
-  {
-    id: 'load-pnleur',
-    load_code: '23/10/26 PNLEUR',
-    carrier: 'PostNL Europe',
-    dock: 'DOCK-004',
-    work_mode: 'LOA - LOAD',
-    scheduling: '23h00 - 23h45',
-    scheduled_time: '23:00',
-    status: 'Picking in progress',
-    picks_done: 296,
-    picks_total: 510,
-    picks_percentage: 58.0,
-    hds_loaded: 0,
-    hds_total: 36,
-    load_percentage: 0.0,
-    urgency: 'warning'
+    pick_pct: 60
   },
   {
     id: 'load-dhlfy',
-    load_code: '23/10/26 DHLFY',
-    carrier: 'DHL Parcel',
-    dock: 'DOCK-005',
-    work_mode: 'LOA - LOAD',
-    scheduling: '23h30 - 00h30',
+    load_code: 'DHLFY',
+    load_designation: 'DHL For You',
+    dock: 'DOCK005',
+    planned_loading_time: '233000',
     scheduled_time: '23:30',
-    status: 'Picking started',
-    picks_done: 145,
+    picks_confirmed: 145,
     picks_total: 520,
-    picks_percentage: 27.9,
-    hds_loaded: 0,
-    hds_total: 42,
-    load_percentage: 0.0,
-    urgency: 'upcoming'
-  },
-  {
-    id: 'load-inthq',
-    load_code: '23/10/26 INTHQ',
-    carrier: 'Internal HQ Transfer',
-    dock: 'DOCK-008',
-    work_mode: 'LOA - LOAD',
-    scheduling: '00h00 - 01h00',
-    scheduled_time: '00:00',
-    status: 'Scheduled',
-    picks_done: 12,
-    picks_total: 150,
-    picks_percentage: 8.0,
-    hds_loaded: 0,
-    hds_total: 24,
-    load_percentage: 0.0,
-    urgency: 'scheduled'
+    pick_pct: 28
   }
 ]
 
+const route = useRoute()
+
+// Thresholds from specification:
+// Groen > 85%, Oranje 50%-85%, Rood < 50% (overridable via ?green=98 if needed)
+const greenThreshold = computed(() => {
+  const q = Number(route.query.green)
+  return Number.isFinite(q) && q > 0 ? q : 85
+})
+const orangeThreshold = computed(() => {
+  const q = Number(route.query.orange)
+  return Number.isFinite(q) && q > 0 ? q : 50
+})
+
 const rawLoads = ref<DockLoad[]>(DEFAULT_LOADS)
 
-// Chronological sort from earliest upcoming departure to latest
+function formatHhmmssToHhmm(raw?: string | number): string {
+  if (!raw) return '00:00'
+  const s = String(raw).trim()
+  if (s.includes(':')) return s.slice(0, 5)
+  const digits = s.replace(/\D/g, '').padStart(6, '0')
+  return `${digits.slice(0, 2)}:${digits.slice(2, 4)}`
+}
+
+function normalizeIncomingLoads(incoming: any[]): DockLoad[] {
+  const normalized = incoming
+    .map((item, idx) => {
+      const rawCode = String(item.load_code ?? '').trim()
+      // Extract clean code if legacy mock had date prefix like "23/10/26 PNLPAR"
+      const cleanCode = rawCode.split(/\s+/).pop() || rawCode
+      const confirmed = Number(item.picks_confirmed ?? item.picks_done ?? 0)
+      const total = Number(item.picks_total ?? 0)
+      const pct =
+        item.pick_pct !== undefined && item.pick_pct !== null
+          ? Number(item.pick_pct)
+          : item.picks_percentage !== undefined
+          ? Math.round(Number(item.picks_percentage))
+          : total > 0
+          ? Math.round((confirmed / total) * 100)
+          : 0
+
+      return {
+        id: item.id || `load-${cleanCode.toLowerCase()}-${idx}`,
+        load_date: item.load_date,
+        load_code: cleanCode,
+        load_designation: String(item.load_designation || item.carrier || cleanCode).trim(),
+        dock: String(item.dock || '—').trim(),
+        planned_loading_time: String(item.planned_loading_time || ''),
+        scheduled_time: item.scheduled_time
+          ? String(item.scheduled_time).slice(0, 5)
+          : formatHhmmssToHhmm(item.planned_loading_time),
+        picks_confirmed: confirmed,
+        picks_total: total,
+        pick_pct: pct
+      }
+    })
+    .filter((l) => ALLOWED_LOAD_CODES.has(l.load_code))
+
+  return normalized.length > 0 ? normalized : DEFAULT_LOADS
+}
+
+// Chronological sort from earliest upcoming departure to latest (matching ORDER BY cghdch, cgccha)
 const sortedLoads = computed<DockLoad[]>(() => {
   return [...rawLoads.value].sort((a, b) => {
     const normTime = (t: string) => {
       const [h, m] = t.split(':').map(Number)
       return h < 6 ? (h + 24) * 60 + m : h * 60 + m
     }
-    return normTime(a.scheduled_time) - normTime(b.scheduled_time)
+    const diff = normTime(a.scheduled_time) - normTime(b.scheduled_time)
+    return diff !== 0 ? diff : a.load_code.localeCompare(b.load_code)
   })
 })
 
-// Earliest scheduled_time (can include 1, 2 or more simultaneous pickups)
+// Earliest scheduled_time (can include 1, 2 or more simultaneous loads)
 const earliestTime = computed(() => sortedLoads.value[0]?.scheduled_time ?? null)
 
 const earliestLoads = computed(() => {
@@ -138,28 +145,36 @@ function isEarliestMoment(load: DockLoad) {
   return earliestTime.value !== null && load.scheduled_time === earliestTime.value
 }
 
-// Background status reflects the earliest pickup moment(s)
+function dialClass(pct: number): 'good' | 'warn' | 'bad' {
+  if (pct > greenThreshold.value) return 'good'
+  if (pct >= orangeThreshold.value) return 'warn'
+  return 'bad'
+}
+
+// Background status reflects the earliest pickup moment(s):
+// Groen > 85%, Oranje 50%-85%, Rood < 50%
 const computedStatus = computed<'good' | 'risk' | 'bad'>(() => {
   if (!earliestLoads.value.length) return 'good'
-  const minPct = Math.min(...earliestLoads.value.map((l) => l.picks_percentage))
-  if (minPct >= 80) return 'good'
-  if (minPct >= 40) return 'risk'
+  const minPct = Math.min(...earliestLoads.value.map((l) => l.pick_pct))
+  if (minPct > greenThreshold.value) return 'good'
+  if (minPct >= orangeThreshold.value) return 'risk'
   return 'bad'
 })
 
 const topKpis = computed(() => {
-  const remainingPicks = sortedLoads.value.reduce((acc, l) => acc + (l.picks_total - l.picks_done), 0)
-  const remainingHds = sortedLoads.value.reduce((acc, l) => acc + (l.hds_total - l.hds_loaded), 0)
+  const confirmedPicks = sortedLoads.value.reduce((acc, l) => acc + l.picks_confirmed, 0)
+  const totalPicks = sortedLoads.value.reduce((acc, l) => acc + l.picks_total, 0)
+  const openPicks = Math.max(0, totalPicks - confirmedPicks)
   return [
     {
       label: 'Openstaande Picks',
-      value: remainingPicks,
+      value: openPicks,
       unit: 'picks'
     },
     {
-      label: 'Nog te laden op dock',
-      value: remainingHds,
-      unit: 'HDs'
+      label: 'Geconfirmde Picks',
+      value: confirmedPicks,
+      unit: 'picks'
     }
   ]
 })
@@ -167,8 +182,10 @@ const topKpis = computed(() => {
 const historyText = computed(() => {
   if (!earliestLoads.value.length) return ''
   const first = earliestLoads.value[0]
-  const carriers = earliestLoads.value.map((l) => `${l.carrier} (${l.dock})`).join(' & ')
-  return `Eerstvolgende pickup: ${first.scheduling} · ${carriers}`
+  const designations = earliestLoads.value
+    .map((l) => `${l.load_designation} (${l.dock})`)
+    .join(' & ')
+  return `Eerstvolgende load: ${first.scheduled_time} · ${designations}`
 })
 
 function setBodyColor(s: string) {
@@ -184,7 +201,13 @@ const fetchData = async () => {
   try {
     const res = await axios.get(API)
     if (res.data?.loads?.length) {
-      rawLoads.value = res.data.loads
+      // Only overwrite if the backend is returning the new 3-load dataset (with PNLMAI or load_designation)
+      const hasNewFormat = res.data.loads.some(
+        (l: any) => l.load_designation || l.load_code === 'PNLMAI'
+      )
+      if (hasNewFormat) {
+        rawLoads.value = normalizeIncomingLoads(res.data.loads)
+      }
     }
   } catch (err) {
     rawLoads.value = DEFAULT_LOADS
@@ -197,19 +220,13 @@ onMounted(() => {
   const id = setInterval(fetchData, 5_000)
   onBeforeUnmount(() => clearInterval(id))
 })
-
-function dialClass(pct: number) {
-  if (pct >= 80) return 'good'
-  if (pct >= 40) return 'warn'
-  return 'bad'
-}
 </script>
 
 <template>
   <header>Next Day Progress</header>
 
   <main class="nd-main">
-    <!-- Top KPI section: 2 side-by-side KpiCards using the standard component -->
+    <!-- Top KPI section: 2 side-by-side KpiCards (Openstaande Picks & Geconfirmde Picks) -->
     <section class="kpi-area nd-kpi-area">
       <div class="kpis">
         <KpiCard
@@ -222,7 +239,7 @@ function dialClass(pct: number) {
 
     <p class="history nd-history">{{ historyText }}</p>
 
-    <!-- Chronological pickup rows from top (earliest) to bottom -->
+    <!-- Chronological load rows from top (earliest) to bottom: PNLMAI, PNLPAR, DHLFY -->
     <section class="people-list pickup-list">
       <div
         v-for="load in sortedLoads"
@@ -230,15 +247,15 @@ function dialClass(pct: number) {
         class="person-bar pickup-card"
         :class="[
           { 'is-next': isEarliestMoment(load) },
-          `card-${dialClass(load.picks_percentage)}`
+          `card-${dialClass(load.pick_pct)}`
         ]"
       >
-        <!-- Top row of card: Time badge + Carrier + Dock + Dial -->
+        <!-- Top row of card: Planned Loading Time + Dock + Load Designation + Dial -->
         <div class="pickup-top">
           <div class="pickup-left">
             <div
               class="time-badge"
-              :class="isEarliestMoment(load) ? `badge-${dialClass(load.picks_percentage)}` : ''"
+              :class="isEarliestMoment(load) ? `badge-${dialClass(load.pick_pct)}` : ''"
             >
               <span class="time-main">{{ load.scheduled_time }}</span>
               <span class="time-dock">{{ load.dock }}</span>
@@ -246,11 +263,11 @@ function dialClass(pct: number) {
 
             <div class="carrier-block">
               <div class="carrier-line">
-                <span class="carrier-title">{{ load.carrier }}</span>
+                <span class="carrier-title">{{ load.load_designation }}</span>
                 <span
                   v-if="isEarliestMoment(load)"
                   class="next-badge"
-                  :class="`badge-${dialClass(load.picks_percentage)}`"
+                  :class="`badge-${dialClass(load.pick_pct)}`"
                 >
                   EERSTVOLGEND
                 </span>
@@ -258,56 +275,38 @@ function dialClass(pct: number) {
               <div class="meta-line">
                 <span class="meta-code">{{ load.load_code }}</span>
                 <span class="meta-sep">•</span>
-                <span>{{ load.scheduling }}</span>
+                <span>Geplande laadtijd: {{ load.scheduled_time }}</span>
                 <span class="meta-sep">•</span>
-                <span class="meta-status">{{ load.status }}</span>
+                <span class="meta-status">Dock: {{ load.dock }}</span>
               </div>
             </div>
           </div>
 
           <div
             class="dial pickup-dial"
-            :class="dialClass(load.picks_percentage)"
-            :style="{ '--value': Math.round(load.picks_percentage) }"
+            :class="dialClass(load.pick_pct)"
+            :style="{ '--value': Math.round(load.pick_pct) }"
           >
-            <span>{{ Math.round(load.picks_percentage) }}%</span>
+            <span>{{ Math.round(load.pick_pct) }}%</span>
           </div>
         </div>
 
-        <!-- Bottom row of card: 2 side-by-side progress bars (Pick Batch & Laden HDs) -->
-        <div class="pickup-bars">
-          <!-- Bar 1: Pick Batch (Amber/Gold like Reflex) -->
-          <div class="prog-col">
-            <div class="prog-head">
-              <span class="prog-label">Pick Batch</span>
-              <span class="prog-val">
-                <strong>{{ load.picks_done }}</strong> / {{ load.picks_total }}
-                ({{ Math.round(load.picks_percentage) }}%)
-              </span>
-            </div>
-            <div class="prog-track">
-              <div
-                class="prog-fill fill-pick"
-                :style="{ width: `${Math.min(100, Math.max(0, load.picks_percentage))}%` }"
-              ></div>
-            </div>
+        <!-- Bottom row of card: Single full-width progress bar for Confirmed Picks -->
+        <div class="pickup-bar-single">
+          <div class="prog-head">
+            <span class="prog-label">Geconfirmde Picks</span>
+            <span class="prog-val">
+              <strong>{{ load.picks_confirmed.toLocaleString('nl-NL') }}</strong> /
+              {{ load.picks_total.toLocaleString('nl-NL') }} picks
+              ({{ Math.round(load.pick_pct) }}%)
+            </span>
           </div>
-
-          <!-- Bar 2: Laden HDs (Header Blue) -->
-          <div class="prog-col">
-            <div class="prog-head">
-              <span class="prog-label">Laden HDs</span>
-              <span class="prog-val">
-                <strong>{{ load.hds_loaded }}</strong> / {{ load.hds_total }}
-                ({{ Math.round(load.load_percentage) }}%)
-              </span>
-            </div>
-            <div class="prog-track">
-              <div
-                class="prog-fill fill-load"
-                :style="{ width: `${Math.min(100, Math.max(0, load.load_percentage))}%` }"
-              ></div>
-            </div>
+          <div class="prog-track">
+            <div
+              class="prog-fill"
+              :class="`fill-${dialClass(load.pick_pct)}`"
+              :style="{ width: `${Math.min(100, Math.max(0, load.pick_pct))}%` }"
+            ></div>
           </div>
         </div>
       </div>
@@ -317,77 +316,77 @@ function dialClass(pct: number) {
 
 <style scoped>
 .nd-main {
-  padding: 1.5vh 2.5vw 2vh 2.5vw;
+  padding: 2vh 2.5vw 3vh 2.5vw;
 }
 
 .nd-kpi-area {
-  flex: 0 0 18vh;
+  flex: 0 0 22vh;
 }
 
 .nd-kpi-area :deep(.kpi-card) {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 1.2vh 1.5vw;
+  padding: 1.5vh 1.5vw;
 }
 
 .nd-kpi-area :deep(.kpi-value) {
-  font-size: clamp(2.5rem, 9vw, 5.5rem);
+  font-size: clamp(3rem, 11vw, 6.2rem);
 }
 
 .nd-kpi-area :deep(.kpi-title) {
-  font-size: clamp(1.2rem, 3.8vw, 2.4rem);
+  font-size: clamp(1.4rem, 4.2vw, 2.6rem);
 }
 
 .nd-kpi-area :deep(.kpi-label) {
-  font-size: clamp(0.85rem, 2vw, 1.4rem);
+  font-size: clamp(0.95rem, 2.2vw, 1.5rem);
 }
 
 .nd-history {
-  margin: 1vh 0 0.8vh 0;
-  font-size: clamp(0.95rem, 2.1vw, 1.5rem);
+  margin: 1.4vh 0 1.2vh 0;
+  font-size: clamp(1.05rem, 2.3vw, 1.65rem);
   font-weight: 600;
 }
 
 .pickup-list {
-  --person-gap: 1.4vh;
-  flex: 1 1 0;
+  --person-gap: 2.2vh;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   gap: var(--person-gap);
-  margin-top: 0.6vh;
+  margin-top: 0.8vh;
 }
 
 .pickup-card {
-  height: auto;
-  min-height: 10.5vh;
+  height: auto !important;
+  min-height: 14.5vh;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   align-items: stretch;
-  padding: 1.3vh 2.2vw;
-  background: rgba(232, 240, 250, 0.94);
-  border-radius: 0 0.85rem 0 0;
-  border-left: 1vw solid var(--clr-header);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+  padding: 2vh 2.5vw;
+  background: rgba(232, 240, 250, 0.95);
+  border-radius: 0 1rem 0 0;
+  border-left: 1.2vw solid var(--clr-header);
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.18);
   box-sizing: border-box;
 }
 
 .pickup-card.is-next {
   background: #ffffff;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
 }
 
 .pickup-card.is-next.card-good {
-  border-left: 1.2vw solid #0b7c4b;
+  border-left: 1.4vw solid #0b7c4b;
 }
 
 .pickup-card.is-next.card-warn {
-  border-left: 1.2vw solid #ff9c2a;
+  border-left: 1.4vw solid #ff9c2a;
 }
 
 .pickup-card.is-next.card-bad {
-  border-left: 1.2vw solid #d6252c;
+  border-left: 1.4vw solid #d6252c;
 }
 
 /* Top part of each pickup card */
@@ -395,13 +394,13 @@ function dialClass(pct: number) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1.5vw;
+  gap: 2vw;
 }
 
 .pickup-left {
   display: flex;
   align-items: center;
-  gap: 2vw;
+  gap: 2.2vw;
   min-width: 0;
 }
 
@@ -412,9 +411,9 @@ function dialClass(pct: number) {
   justify-content: center;
   background: var(--clr-header);
   color: #ffffff;
-  border-radius: 0.5rem;
-  padding: 0.4vh 1.4vw;
-  min-width: 12vw;
+  border-radius: 0.6rem;
+  padding: 0.7vh 1.6vw;
+  min-width: 14vw;
   text-align: center;
   flex-shrink: 0;
 }
@@ -432,33 +431,35 @@ function dialClass(pct: number) {
 }
 
 .time-main {
-  font-size: clamp(1.3rem, 3.4vw, 2.3rem);
+  font-size: clamp(1.6rem, 4.2vw, 2.9rem);
   font-weight: 800;
   line-height: 1.05;
 }
 
 .time-dock {
-  font-size: clamp(0.7rem, 1.5vw, 1.05rem);
+  font-size: clamp(0.85rem, 1.8vw, 1.25rem);
   font-weight: 700;
   letter-spacing: 0.04em;
   opacity: 0.92;
+  margin-top: 0.2vh;
 }
 
 .carrier-block {
   display: flex;
   flex-direction: column;
-  gap: 0.25vh;
+  gap: 0.4vh;
   min-width: 0;
 }
 
 .carrier-line {
   display: flex;
   align-items: center;
-  gap: 1.2vw;
+  gap: 1.4vw;
+  flex-wrap: wrap;
 }
 
 .carrier-title {
-  font-size: clamp(1.2rem, 3.1vw, 2.1rem);
+  font-size: clamp(1.5rem, 3.8vw, 2.6rem);
   font-weight: 800;
   color: var(--clr-text-dark);
   line-height: 1.1;
@@ -467,9 +468,9 @@ function dialClass(pct: number) {
 .next-badge {
   background: #0b7c4b;
   color: #ffffff;
-  font-size: clamp(0.65rem, 1.4vw, 0.95rem);
+  font-size: clamp(0.75rem, 1.6vw, 1.1rem);
   font-weight: 800;
-  padding: 0.2vh 0.9vw;
+  padding: 0.25vh 1vw;
   border-radius: 999px;
   letter-spacing: 0.05em;
 }
@@ -477,14 +478,14 @@ function dialClass(pct: number) {
 .meta-line {
   display: flex;
   align-items: center;
-  gap: 0.8vw;
-  font-size: clamp(0.8rem, 1.8vw, 1.25rem);
+  gap: 0.9vw;
+  font-size: clamp(0.95rem, 2.1vw, 1.45rem);
   color: #334155;
   font-weight: 600;
 }
 
 .meta-code {
-  font-weight: 700;
+  font-weight: 800;
   color: #0f172a;
 }
 
@@ -498,38 +499,32 @@ function dialClass(pct: number) {
 }
 
 .pickup-dial {
-  --size: 4.6vh;
+  --size: 6vh;
   flex-shrink: 0;
-  font-size: clamp(0.85rem, 1.9vw, 1.3rem);
+  font-size: clamp(1.05rem, 2.4vw, 1.65rem);
 }
 
-/* Bottom part of each pickup card: dual progress bars */
-.pickup-bars {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2.5vw;
-  width: 100%;
-  margin-top: 0.4vh;
-}
-
-.prog-col {
+/* Bottom part of each pickup card: single full-width progress bar */
+.pickup-bar-single {
   display: flex;
   flex-direction: column;
-  gap: 0.35vh;
+  gap: 0.5vh;
+  width: 100%;
+  margin-top: 0.6vh;
 }
 
 .prog-head {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  font-size: clamp(0.75rem, 1.7vw, 1.2rem);
+  font-size: clamp(0.95rem, 2.1vw, 1.45rem);
   color: var(--clr-text-dark);
 }
 
 .prog-label {
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
   color: #1e293b;
 }
 
@@ -546,12 +541,12 @@ function dialClass(pct: number) {
 
 .prog-track {
   width: 100%;
-  height: 1.35vh;
-  min-height: 10px;
+  height: 1.9vh;
+  min-height: 14px;
   background: #cbd5e1;
   border-radius: 999px;
   overflow: hidden;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.15);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.18);
 }
 
 .prog-fill {
@@ -560,11 +555,15 @@ function dialClass(pct: number) {
   transition: width 0.4s ease;
 }
 
-.fill-pick {
-  background: linear-gradient(90deg, #f59e0b 0%, #eab308 100%);
+.fill-good {
+  background: linear-gradient(90deg, #0b7c4b 0%, #13c38b 100%);
 }
 
-.fill-load {
-  background: linear-gradient(90deg, #004580 0%, #0284c7 100%);
+.fill-warn {
+  background: linear-gradient(90deg, #d97706 0%, #ff9c2a 100%);
+}
+
+.fill-bad {
+  background: linear-gradient(90deg, #b91c1c 0%, #d6252c 100%);
 }
 </style>
