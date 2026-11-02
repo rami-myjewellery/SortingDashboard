@@ -138,6 +138,10 @@ def _query_reflex_sync() -> List[Dict[str, Any]]:
         tcp_connect_timeout=4.0,
     ) as conn:
         with conn.cursor() as cur:
+            try:
+                cur.execute("ALTER SESSION SET CURRENT_SCHEMA = REFLEX")
+            except Exception:
+                pass
             cur.execute(NEXT_DAY_SQL)
             columns = [col[0].upper() for col in cur.description]
             rows = [dict(zip(columns, row)) for row in cur.fetchall()]

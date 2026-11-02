@@ -3,7 +3,7 @@ substitutions:
   _REGION: europe-west4
   _API_SERVICE: sorting-dashboard-api
   _WEB_SERVICE: sorting-dashboard-web
-  _VPC_CONNECTOR: projects/mj-shared/locations/europe-west4/connectors/poc-ingestor
+  _VPC_CONNECTOR: projects/mj-shared/locations/europe-west4/connectors/mj-apigee-peering
   _MIN_INST: '1'
   _MAX_INST: '2'
   _STAGE: staging
