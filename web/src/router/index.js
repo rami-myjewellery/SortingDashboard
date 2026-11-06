@@ -9,8 +9,14 @@ import Returns from '../views/Returns.vue'
 import Picking from "@/views/Picking.vue";
 import Replenishment from "@/views/Replenishment.vue";
 import NextDayProgress from "@/views/NextDayProgress.vue";
+import BindingAdvisor from "@/views/BindingAdvisor.vue";
 
 const routes = [
+    { path: '/binding-advisor',            component: BindingAdvisor },
+    { path: '/binding-advisor/userKPI',    component: BindingAdvisor },
+    { path: '/BindingAdvisor',             component: BindingAdvisor },
+    { path: '/BindingAdvisor/userKPI',     component: BindingAdvisor },
+
     { path: '/NextDayProgress',            component: NextDayProgress },
     { path: '/NextDayProgress/userKPI',    component: NextDayProgress },
 

@@ -33,3 +33,5 @@ class Dashboard(BaseModel):
     idleThreshold: int = 60
     kpi_state: Optional[Dict] = None
     loads: Optional[List[Dict]] = None
+    binding_rows: Optional[List[Dict]] = None
+    advised_carton_type: Optional[str] = None

@@ -34,6 +34,7 @@ Alle dashboard-endpoints zijn `GET` requests onder het pad `/dashboard/<Afdeling
 | `GET /dashboard/Returns` | **Retourenverwerking** | Retourvolume, aantal verwerkte retouritems en behandeltijd. |
 | `GET /dashboard/ErrorLanes` | **Foutstraten & Storingen** | Error rate percentage, opgeloste fouten en openstaande fouten. |
 | `GET /dashboard/NextDayProgress` | **Next Day Progress (Reflex Loads)** | Chronologische laad- & vertrekplanning (`PNLMAI`, `PNLMA2`, `PNLPAR`, `DHLFY`), aantal geconfirmde picks, totaal aantal picks en voortgangspercentage (`pick_pct`). |
+| `GET /dashboard/BindingAdvisor` | **Binding Advisor (Reflex FMA Cartons)** | Real-time prioriteitsadvies voor het voorbinden van FMA-karren (`PDL`, `PDS`, `BKL`, `PDM`, `BGR`) op basis van volle karren, pick-batch prioriteit en oudste aanmaaktijd. |
 
 ---
 

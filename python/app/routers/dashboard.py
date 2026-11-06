@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.models import Dashboard, Kpi
 from app.data.store import get_db
+from app.services.binding_advisor import get_binding_advisor_rows
 from app.services.manual_finish import get_manual_finish_metrics
 from app.services.next_day_progress import get_next_day_loads
 from datadog_logger import log_datadog_event
@@ -267,4 +268,33 @@ async def get_next_day_progress():
         people=[],
         idleThreshold=60,
         loads=loads,
+    )
+
+
+# ── Binding Advisor (Live Reflex FMA query for carton binding priority) ─────
+@router.get("/BindingAdvisor", response_model=Dashboard)
+@router.get("/binding-advisor", response_model=Dashboard)
+async def get_binding_advisor():
+    rows = await get_binding_advisor_rows()
+    advised = str(rows[0].get("carton_type") or "").strip() if rows else None
+    total_cartons = sum(int(r.get("no_of_cartons") or 0) for r in rows)
+    total_full_carts = round(sum(float(r.get("no_of_full_carts") or 0.0) for r in rows), 1)
+    history = (
+        f"WE ADVISE TO BIND AND PICK {advised} FIRST"
+        if advised
+        else "NO OPEN CARTONS TO BIND"
+    )
+
+    return Dashboard(
+        title="BINDING ADVISOR",
+        status="good",
+        kpis=[
+            Kpi(label="Open Cartons", value=float(total_cartons), unit="cartons"),
+            Kpi(label="Full Carts", value=total_full_carts, unit="carts"),
+        ],
+        historyText=history,
+        people=[],
+        idleThreshold=60,
+        binding_rows=rows,
+        advised_carton_type=advised,
     )
