@@ -72,6 +72,16 @@ function formatFullCarts(val: number): string {
   return val.toFixed(1)
 }
 
+function splitDateTime(raw: string): { date: string; time: string } {
+  const s = (raw || '').trim()
+  if (!s || s === '—') return { date: '—', time: '' }
+  const parts = s.split(/[\sT]+/)
+  return {
+    date: parts[0] || s,
+    time: parts.slice(1).join(' ')
+  }
+}
+
 const fetchData = async () => {
   const isLocal =
     typeof window !== 'undefined' &&
@@ -229,7 +239,17 @@ onMounted(() => {
                 <td class="cell-prio">{{ row.pick_batch_priority_code }}</td>
                 <td class="cell-cartons">{{ row.no_of_cartons }}</td>
                 <td class="cell-carts">{{ formatFullCarts(row.no_of_full_carts) }}</td>
-                <td class="cell-oldest">{{ row.oldest_creation_datetime }}</td>
+                <td class="cell-oldest">
+                  <div class="dt-stack">
+                    <span class="dt-date">{{ splitDateTime(row.oldest_creation_datetime).date }}</span>
+                    <span
+                      v-if="splitDateTime(row.oldest_creation_datetime).time"
+                      class="dt-time"
+                    >
+                      {{ splitDateTime(row.oldest_creation_datetime).time }}
+                    </span>
+                  </div>
+                </td>
               </tr>
               <tr v-if="rows.length === 0">
                 <td colspan="5" class="cell-empty">Geen openstaande FMA dozen gevonden.</td>
@@ -415,19 +435,19 @@ onMounted(() => {
 }
 
 .col-w-type {
-  width: 17%;
+  width: 18%;
 }
 .col-w-prio {
-  width: 21%;
+  width: 22%;
 }
 .col-w-cartons {
-  width: 16%;
+  width: 18%;
 }
 .col-w-carts {
-  width: 17%;
+  width: 19%;
 }
 .col-w-oldest {
-  width: 29%;
+  width: 23%;
 }
 
 .ba-table thead th {
@@ -511,13 +531,24 @@ onMounted(() => {
 }
 
 .cell-oldest {
-  font-size: clamp(0.55rem, min(1.5vw, 2.15vh), 1.25rem);
+  font-size: clamp(0.65rem, min(1.75vw, 2.2vh), 1.35rem);
   font-weight: 700;
   text-align: left;
   font-variant-numeric: tabular-nums;
+}
+
+.dt-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  line-height: 1.2;
+  gap: 0.1rem;
+}
+
+.dt-date,
+.dt-time {
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .cell-empty {
