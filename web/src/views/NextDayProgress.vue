@@ -61,6 +61,16 @@ const DEFAULT_LOADS: DockLoad[] = [
   }
 ]
 
+const props = withDefaults(defineProps<{
+  managedStatus?: boolean
+}>(), {
+  managedStatus: false
+})
+
+const emit = defineEmits<{
+  (e: 'status-change', status: 'good' | 'risk' | 'bad'): void
+}>()
+
 const route = useRoute()
 
 // Thresholds from specification:
@@ -196,7 +206,10 @@ function setBodyColor(s: string) {
 }
 
 watchEffect(() => {
-  setBodyColor(computedStatus.value)
+  emit('status-change', computedStatus.value)
+  if (!props.managedStatus) {
+    setBodyColor(computedStatus.value)
+  }
 })
 
 const fetchData = async () => {
@@ -217,7 +230,10 @@ const fetchData = async () => {
 }
 
 onMounted(() => {
-  setBodyColor(computedStatus.value)
+  emit('status-change', computedStatus.value)
+  if (!props.managedStatus) {
+    setBodyColor(computedStatus.value)
+  }
   fetchData()
   const id = setInterval(fetchData, 5_000)
   onBeforeUnmount(() => clearInterval(id))
