@@ -6,6 +6,6 @@ const API = 'https://sorting-dashboard-api-208732756826.europe-west4.run.app/das
 </script>
 
 <template>
-  <!-- phaseOffset=1: :00–:29 NextDayProgress, :30–:59 GeekPicking -->
-  <GeekNextDayLooper :api="API" :phase-offset="1" />
+  <!-- phaseOffset=0: :00–:29 GeekPicking, :30–:59 NextDayProgress (synced with GeekInbound) -->
+  <GeekNextDayLooper :api="API" :phase-offset="0" />
 </template>
